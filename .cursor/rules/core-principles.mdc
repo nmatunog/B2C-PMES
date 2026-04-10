@@ -1,0 +1,36 @@
+---
+description: Enforce core coding and architecture principles
+alwaysApply: true
+---
+
+# Core Principles
+
+- Keep implementations as simple as possible and avoid over-engineering.
+- Optimize for readability with clear naming and comments that explain why.
+- Enforce DRY by extracting repeated business logic and UI markup.
+- Ask user permission before major revisions and include the reason.
+
+# Frontend (Next.js + React)
+
+- Use function components and hooks.
+- Prefer server components/actions when project uses Next.js.
+- Organize by feature with `actions/`, `app/`, `components/`, `hooks/`, `services/`, `types/`, `lib/`.
+- Use accessible markup and `shadcn/ui` for UI components when applicable.
+- Keep Tailwind classes readable and multiline for complex styles.
+
+# Backend (NestJS)
+
+- Keep controllers thin and business logic in services.
+- Use dependency injection, DTOs, class-validator, and RESTful naming.
+- Handle errors with NestJS exception filters.
+
+# Database (Prisma + PostgreSQL)
+
+- Use schema-first modeling and migrations for changes.
+- Prefer type-safe queries and transactions for multi-step writes.
+
+# Testing and Security
+
+- Use Jest (backend), React Testing Library (frontend), and Playwright/Cypress (e2e).
+- Keep files focused on one responsibility and consistent naming.
+- Use `.env` for configuration, never commit secrets, and validate env vars at startup.

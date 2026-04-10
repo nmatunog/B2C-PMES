@@ -1,0 +1,17 @@
+---
+description: Auto-commit workflow — commit after meaningful work; confirm only when necessary
+alwaysApply: true
+---
+
+# Git commits (user preference)
+
+- After completing a coherent unit of work (feature, fix, docs update, or end of task), **create a git commit** with a clear message unless blocked below.
+- **Do not ask** for permission to commit routine saves of tracked project files.
+- **Ask for confirmation first** when:
+  - Removing or rewriting history (`reset --hard`, `rebase`, force-push), or deleting important files
+  - Committing anything that might contain secrets (`.env`, keys, tokens) — ensure they are gitignored first
+  - The change is large, ambiguous, or could break production — summarize and offer to proceed or split
+  - User has not initialized `origin` / remote — offer commands to add remote and push; do not assume GitHub credentials
+
+- Use conventional-style messages when helpful: `feat:`, `fix:`, `docs:`, `chore:`.
+- If git is unavailable or the folder is not a repo, offer to run `git init` once, then commit.

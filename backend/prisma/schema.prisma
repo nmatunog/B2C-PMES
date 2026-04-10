@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Participant {
+  id            String         @id @default(uuid())
+  fullName      String
+  email         String         @unique
+  phone         String
+  dob           String
+  gender        String
+  createdAt     DateTime       @default(now())
+  pmesRecords   PmesRecord[]
+  loiSubmission LoiSubmission?
+}
+
+model PmesRecord {
+  id            String      @id @default(uuid())
+  score         Int
+  passed        Boolean
+  timestamp     DateTime    @default(now())
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id])
+}
+
+model LoiSubmission {
+  id             String      @id @default(uuid())
+  address        String
+  occupation     String
+  employer       String
+  initialCapital Float
+  submittedAt    DateTime    @default(now())
+  participantId  String      @unique
+  participant    Participant @relation(fields: [participantId], references: [id])
+}

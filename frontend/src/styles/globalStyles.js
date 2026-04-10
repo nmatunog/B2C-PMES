@@ -1,0 +1,13 @@
+export const globalStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; color: #0f172a; }
+  .btn-primary { background-color: #004aad; color: white; padding: 1.5rem; border-radius: 1.5rem; font-weight: 800; font-size: 1.4rem; transition: all 0.3s; border: none; cursor: pointer; box-shadow: 0 10px 20px rgba(0, 74, 173, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn-secondary { background-color: white; color: #004aad; border: 4px solid #004aad; padding: 1.5rem; border-radius: 1.5rem; font-weight: 800; font-size: 1.4rem; transition: all 0.3s; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .input-field { width: 100%; padding: 1.5rem; background-color: white; border: 4px solid #e2e8f0; border-radius: 1.5rem; font-size: 1.25rem; box-sizing: border-box; font-weight: 600; }
+  .card-senior { background-color: white; border-radius: 4rem; box-shadow: 0 40px 80px rgba(0,0,0,0.1); padding: 4rem; border: 10px solid rgba(0, 74, 173, 0.05); }
+  @media print {
+    .no-print { display: none !important; }
+    body { background: white !important; padding: 0 !important; }
+    .certificate-container { border: 24px solid #004aad !important; box-shadow: none !important; margin: 0 !important; width: 100vw !important; height: 100vh !important; border-radius: 0 !important; display: flex !important; flex-direction: column !important; justify-content: center !important; }
+  }
+`;

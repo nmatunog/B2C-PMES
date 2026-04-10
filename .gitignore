@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.npm-cache/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Environment and secrets (never commit)
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Build outputs
+frontend/dist/
+backend/dist/
+
+# Logs and caches
+npm-debug.log*
+*.log
+.DS_Store
+.turbo
+.cache
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
