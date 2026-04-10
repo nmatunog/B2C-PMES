@@ -33,6 +33,8 @@ export default function LandingPage({
   isFirebaseConfigured = true,
   authUser = null,
   resumePmesSuggested = false,
+  /** True when the signed-in member has passed the PMES exam (score ≥ 7 or saved record). Used to gate LOI and payment steps. */
+  pmesExamPassed = false,
   onJoinUs,
   onLogin,
   onLogout,
@@ -41,6 +43,8 @@ export default function LandingPage({
   onRetrieveCertificate,
   onAdminPortal,
   onMemberProfile,
+  onOpenLoi,
+  onOpenPayment,
 }) {
   const ACTUAL_MEMBER_COUNT = 27;
   const INITIAL_INVESTMENT = 1500;
@@ -52,6 +56,7 @@ export default function LandingPage({
   const [orientationStep, setOrientationStep] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [privacyActive, setPrivacyActive] = useState(false);
+  const [pathGateMessage, setPathGateMessage] = useState(null);
 
   const [totalMembers] = useState(ACTUAL_MEMBER_COUNT);
   const [showNotification, setShowNotification] = useState(false);
@@ -85,8 +90,52 @@ export default function LandingPage({
     };
   }, []);
 
-  const startPmes = () => onStartPmes?.();
+  useEffect(() => {
+    if (!pathGateMessage) return undefined;
+    const t = window.setTimeout(() => setPathGateMessage(null), 10000);
+    return () => window.clearTimeout(t);
+  }, [pathGateMessage]);
+
+  /** Signed-in members go straight to the PMES entry; guests must use the member portal (sign up / sign in) first. */
+  const continueToPmes = () => {
+    if (authUser) {
+      onStartPmes?.();
+    } else {
+      setPathGateMessage(null);
+      setMemberPortalOpen(true);
+    }
+  };
+
   const retrieveCertificate = () => onRetrieveCertificate?.();
+
+  const handleJoiningPathStep = (stepId) => {
+    setPathGateMessage(null);
+    if (!isFirebaseConfigured) {
+      setPathGateMessage("Configure Firebase in frontend/.env to use member services.");
+      return;
+    }
+    if (stepId === "pmes") {
+      continueToPmes();
+      return;
+    }
+    if (!authUser) {
+      setMemberPortalOpen(true);
+      return;
+    }
+    if (!pmesExamPassed) {
+      setPathGateMessage(
+        stepId === "loi"
+          ? "Complete and pass the PMES exam before you can submit your Letter of Intent."
+          : "Complete and pass the PMES exam before paying share capital and membership fees.",
+      );
+      return;
+    }
+    if (stepId === "loi") {
+      onOpenLoi?.();
+    } else if (stepId === "pay") {
+      onOpenPayment?.();
+    }
+  };
 
   /** Guests go to the full login screen; signed-in members see the portal menu modal. */
   const openMemberPortal = () => {
@@ -126,10 +175,10 @@ export default function LandingPage({
     {
       title: "The Correct Path to Joining",
       desc: "Three steps to member-ownership — we guide you through each one in the app.",
-      steps: [
-        "Complete the Pre-Membership Education Seminar (PMES) online.",
-        "Submit your Letter of Intent (LOI) through the member portal.",
-        "Pay your share capital and membership fee to become an owner.",
+      pathSteps: [
+        { id: "pmes", label: "Complete the Pre-Membership Education Seminar (PMES) online." },
+        { id: "loi", label: "Submit your Letter of Intent (LOI) through the member portal." },
+        { id: "pay", label: "Pay your share capital and membership fee to become an owner." },
       ],
       icon: <Award className="w-12 h-12" />,
       highlight: "Orientation · Intent · Investment",
@@ -287,7 +336,7 @@ export default function LandingPage({
                 onClick={() => {
                   setMemberPortalOpen(false);
                   setIsMenuOpen(false);
-                  startPmes();
+                  continueToPmes();
                 }}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-black text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700"
               >
@@ -363,18 +412,32 @@ export default function LandingPage({
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tighter text-slate-900 md:text-6xl">
               {orientationContent[orientationStep].title}
             </h2>
-            {orientationContent[orientationStep].steps ? (
+            {orientationContent[orientationStep].pathSteps ? (
               <>
-                <p className="mb-8 text-lg font-medium leading-relaxed text-slate-500 md:text-xl">
+                <p className="mb-6 text-lg font-medium leading-relaxed text-slate-500 md:text-xl">
                   {orientationContent[orientationStep].desc}
                 </p>
-                <ol className="mx-auto mb-8 max-w-xl space-y-4 text-left">
-                  {orientationContent[orientationStep].steps.map((line, i) => (
-                    <li key={i} className="flex gap-4">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-black text-blue-700">
-                        {i + 1}
-                      </span>
-                      <span className="pt-0.5 text-base font-medium leading-relaxed text-slate-600 md:text-lg">{line}</span>
+                {pathGateMessage ? (
+                  <p
+                    className="mx-auto mb-6 max-w-xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-bold text-amber-950"
+                    role="status"
+                  >
+                    {pathGateMessage}
+                  </p>
+                ) : null}
+                <ol className="mx-auto mb-8 max-w-xl space-y-3 text-left">
+                  {orientationContent[orientationStep].pathSteps.map((step, i) => (
+                    <li key={step.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleJoiningPathStep(step.id)}
+                        className="group flex w-full gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-left transition hover:border-blue-200 hover:bg-blue-50/80 md:px-5 md:py-4"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-black text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white">
+                          {i + 1}
+                        </span>
+                        <span className="pt-0.5 text-base font-medium leading-relaxed text-slate-700 md:text-lg">{step.label}</span>
+                      </button>
                     </li>
                   ))}
                 </ol>
@@ -432,7 +495,7 @@ export default function LandingPage({
                 if (orientationStep === orientationContent.length - 1) {
                   setOrientationActive(false);
                   setOrientationStep(0);
-                  startPmes();
+                  continueToPmes();
                 } else {
                   setOrientationStep(orientationStep + 1);
                 }
@@ -743,7 +806,7 @@ export default function LandingPage({
               {authUser ? (
                 <button
                   type="button"
-                  onClick={startPmes}
+                  onClick={continueToPmes}
                   className="group mt-8 flex w-full items-center justify-center gap-2 rounded-3xl bg-slate-900 py-5 text-lg font-black text-white shadow-xl transition-all hover:bg-slate-800"
                 >
                   Continue to PMES <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-2" />
@@ -770,7 +833,7 @@ export default function LandingPage({
                   </div>
                   <button
                     type="button"
-                    onClick={startPmes}
+                    onClick={continueToPmes}
                     className="mt-3 w-full text-center text-sm font-bold text-blue-600 underline-offset-2 hover:underline"
                   >
                     Already have an account? Continue to PMES (sign in)

@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Briefcase,
   CheckCircle2,
+  Coins,
   FileText,
   House,
   Loader2,
@@ -262,6 +263,8 @@ export default function App() {
               setAppState("login_retrieval");
             } else if (saved === "landing") {
               setAppState("landing");
+            } else if (saved === "payment_portal") {
+              setAppState("payment_portal");
             } else if (RESUMABLE_APP_STATES.has(saved)) {
               if (saved === "registration" && isParticipantProfileComplete(prog.formData)) {
                 setAppState("seminar");
@@ -301,7 +304,7 @@ export default function App() {
     if (hydratingRef.current) return undefined;
     if (appState === "signup" || appState === "login" || appState === "admin_dashboard") return undefined;
 
-    const persistStates = new Set([...RESUMABLE_APP_STATES, "landing", "login_retrieval"]);
+    const persistStates = new Set([...RESUMABLE_APP_STATES, "landing", "login_retrieval", "payment_portal"]);
     if (!persistStates.has(appState)) return undefined;
 
     const id = window.setTimeout(() => {
@@ -707,6 +710,10 @@ export default function App() {
     (pmesPaused ||
       Boolean(lastFlowAppStateRef.current && RESUMABLE_APP_STATES.has(lastFlowAppStateRef.current)));
 
+  const pmesExamPassed = Boolean(
+    user && ((typeof score === "number" && score >= 7) || activeRecord?.passed === true),
+  );
+
   if (appState === "landing")
     return (
       <>
@@ -715,6 +722,7 @@ export default function App() {
           isFirebaseConfigured={isFirebaseConfigured}
           authUser={user}
           resumePmesSuggested={resumePmesSuggested}
+          pmesExamPassed={pmesExamPassed}
           onJoinUs={() => {
             if (!isFirebaseConfigured) return;
             if (user) {
@@ -752,6 +760,16 @@ export default function App() {
           onMemberProfile={() => {
             registrationNavRef.current = "portal";
             setAppState("registration");
+          }}
+          onOpenLoi={() => {
+            if (!isFirebaseConfigured) return;
+            setPmesPaused(false);
+            setAppState("loi_form");
+          }}
+          onOpenPayment={() => {
+            if (!isFirebaseConfigured) return;
+            setPmesPaused(false);
+            setAppState("payment_portal");
           }}
         />
       </>
@@ -1041,6 +1059,24 @@ export default function App() {
             className="btn-primary w-full py-10 text-3xl"
           >
             FINISH
+          </button>
+        </div>
+      </div>
+    );
+
+  if (appState === "payment_portal")
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-8">
+        <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+        <div className="card-senior w-full max-w-2xl space-y-8 text-center">
+          <Coins className="mx-auto h-16 w-16 text-[#004aad]" aria-hidden />
+          <h1 className="text-3xl font-black uppercase tracking-tighter text-[#004aad] md:text-4xl">Share capital &amp; membership</h1>
+          <p className="text-lg font-medium leading-relaxed text-slate-600">
+            Use your branch&apos;s official payment instructions to pay share capital and the annual membership fee. Connect your
+            live payment portal here when the cooperative provides the integration or external link.
+          </p>
+          <button type="button" onClick={() => setAppState("landing")} className="btn-primary w-full py-5 text-xl font-black">
+            Back to home
           </button>
         </div>
       </div>
