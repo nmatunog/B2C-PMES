@@ -14,6 +14,7 @@ import {
   FileText,
   House,
   Loader2,
+  LogIn,
   Lock,
   Mail,
   Printer,
@@ -52,6 +53,18 @@ const RESUMABLE_APP_STATES = new Set([
   "result",
   "certificate",
   "loi_form",
+]);
+
+/** PMES and related flows: never render without a Firebase sign-in (guarded below). */
+const MEMBER_AUTH_REQUIRED_STATES = new Set([
+  "consent",
+  "registration",
+  "seminar",
+  "exam",
+  "result",
+  "certificate",
+  "loi_form",
+  "payment_portal",
 ]);
 
 /** Full name, DOB, email, gender — needed for PMES record, certificate, and LOI. */
@@ -583,6 +596,38 @@ export default function App() {
     );
   }
 
+  /** `auth.currentUser` covers the brief window after sign-up before React `user` state updates. */
+  const sessionUser = isFirebaseConfigured ? user ?? auth.currentUser : null;
+
+  if (isFirebaseConfigured && !sessionUser && MEMBER_AUTH_REQUIRED_STATES.has(appState)) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#004aad]/5 p-8">
+        <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+        <ShieldAlert className="h-16 w-16 text-[#004aad]" aria-hidden />
+        <p className="max-w-md text-center text-xl font-bold text-slate-700">
+          Sign in or create a member account to access PMES and member steps.
+        </p>
+        <div className="flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+          <button type="button" onClick={() => setAppState("signup")} className="btn-primary flex flex-1 items-center justify-center gap-2 py-4 text-lg font-black">
+            <UserPlus className="h-5 w-5 shrink-0" aria-hidden />
+            Create account
+          </button>
+          <button
+            type="button"
+            onClick={() => setAppState("login")}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-slate-300 bg-white py-4 text-lg font-black text-slate-800 hover:border-[#004aad]"
+          >
+            <LogIn className="h-5 w-5 shrink-0" aria-hidden />
+            Log in
+          </button>
+        </div>
+        <button type="button" onClick={() => setAppState("landing")} className="font-bold text-slate-500 hover:text-[#004aad]">
+          Back to home
+        </button>
+      </div>
+    );
+  }
+
   if (appState === "signup") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#004aad]/5 p-8">
@@ -758,16 +803,17 @@ export default function App() {
           }}
           onAdminPortal={handleAdminPortal}
           onMemberProfile={() => {
+            if (!user) return;
             registrationNavRef.current = "portal";
             setAppState("registration");
           }}
           onOpenLoi={() => {
-            if (!isFirebaseConfigured) return;
+            if (!isFirebaseConfigured || !user) return;
             setPmesPaused(false);
             setAppState("loi_form");
           }}
           onOpenPayment={() => {
-            if (!isFirebaseConfigured) return;
+            if (!isFirebaseConfigured || !user) return;
             setPmesPaused(false);
             setAppState("payment_portal");
           }}
@@ -1097,21 +1143,6 @@ export default function App() {
         </div>
       </div>
     );
-
-  if (appState === "consent" && isFirebaseConfigured && !user) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#004aad]/5 p-8">
-        <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-        <p className="max-w-md text-center text-xl font-bold text-slate-700">Sign in with your member account to continue the PMES privacy step.</p>
-        <button type="button" onClick={() => setAppState("login")} className="btn-primary px-10 py-4 text-lg">
-          Log in
-        </button>
-        <button type="button" onClick={() => setAppState("landing")} className="font-bold text-slate-500 hover:text-[#004aad]">
-          Back to home
-        </button>
-      </div>
-    );
-  }
 
   if (appState === "consent")
     return (
