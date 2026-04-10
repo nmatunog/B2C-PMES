@@ -2,13 +2,11 @@
 export const KAUBAN_AVATAR_SRC = "/kauban-avatar.png";
 
 /**
- * Single ring frame (PMES blue) — no ring-offset / inner padding (avoids “double frame”).
+ * Single border frame (PMES blue) — avoids stacked ring + shadow reading as a “double” frame.
  */
 export function KaubanAvatarHead({ sizeClass = "h-10 w-10", className = "" }) {
   return (
-    <div
-      className={`shrink-0 overflow-hidden rounded-full bg-white shadow-md shadow-[#004aad]/20 ring-2 ring-[#004aad] ${className}`}
-    >
+    <div className={`shrink-0 overflow-hidden rounded-full border-2 border-[#004aad] bg-white ${className}`}>
       <img
         src={KAUBAN_AVATAR_SRC}
         alt=""

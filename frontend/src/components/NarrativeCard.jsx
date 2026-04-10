@@ -83,13 +83,13 @@ function SectionSoundToggle({ enabled, onChange }) {
           e.stopPropagation();
           onChange(!enabled);
         }}
-        className={`relative h-7 w-11 shrink-0 rounded-full border-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004aad] ${
+        className={`relative h-7 w-[2.75rem] shrink-0 overflow-hidden rounded-full border-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004aad] ${
           enabled ? "border-[#004aad] bg-[#004aad]" : "border-slate-300 bg-slate-200"
         }`}
       >
         <span
-          className={`pointer-events-none absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            enabled ? "translate-x-[1.15rem]" : "translate-x-0.5"
+          className={`pointer-events-none absolute top-1/2 h-[1.125rem] w-[1.125rem] -translate-y-1/2 rounded-full bg-white shadow-sm ring-1 ring-slate-200/90 transition-[left,right] duration-200 ease-out ${
+            enabled ? "left-[calc(100%-1.125rem-3px)]" : "left-[3px]"
           }`}
         />
       </button>
