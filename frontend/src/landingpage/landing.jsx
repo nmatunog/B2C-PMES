@@ -536,14 +536,14 @@ export default function LandingPage({
       <BylawsModal active={bylawsActive} onClose={() => setBylawsActive(false)} pdfUrl={BYLAWS_PDF_URL} />
 
       {showNotification && (
-        <div className="animate-in slide-in-from-bottom-4 fade-in duration-500 fixed bottom-6 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:max-w-sm">
-          <div className="flex items-center gap-3 rounded-2xl border border-stone-200/90 bg-white/95 p-4 text-stone-800 shadow-lg shadow-stone-900/5 ring-1 ring-stone-100 backdrop-blur-sm">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+        <div className="animate-in slide-in-from-left-full duration-500 fixed bottom-10 left-6 z-[60] max-w-[calc(100vw-3rem)]">
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-4 text-white shadow-2xl backdrop-blur-xl">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600">
               <Users className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">Members near you</p>
-              <p className="truncate text-sm font-medium text-stone-800">{lastSignup}</p>
+              <p className="mb-1 text-[10px] font-black uppercase leading-none tracking-widest text-blue-400">Recent Activity</p>
+              <p className="truncate text-sm font-bold">{lastSignup}</p>
             </div>
           </div>
         </div>
