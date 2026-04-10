@@ -751,22 +751,41 @@ export default function App() {
   };
 
   const continuePmesFromLanding = () => {
-    if (!user) return;
+    const sessionUser = user ?? (isFirebaseConfigured ? auth.currentUser : null);
+    if (!sessionUser) return;
+
     hydratingRef.current = true;
     setPmesPaused(false);
-    void loadPmesProgress(db, appId, user.uid).then((prog) => {
-      if (prog?.appState && RESUMABLE_APP_STATES.has(prog.appState)) {
-        applyLoadedProgress({ ...prog, pmesPaused: false });
-        let next = prog.appState;
-        if (next === "registration" && isParticipantProfileComplete(prog.formData)) {
-          next = "seminar";
+
+    void loadPmesProgress(db, appId, sessionUser.uid)
+      .then((prog) => {
+        if (prog && typeof prog === "object") {
+          applyLoadedProgress({ ...prog, pmesPaused: false });
         }
+
+        const saved = typeof prog?.appState === "string" ? prog.appState : null;
+        let next;
+
+        if (saved && RESUMABLE_APP_STATES.has(saved)) {
+          next = saved;
+          if (next === "registration" && prog?.formData && isParticipantProfileComplete(prog.formData)) {
+            next = "seminar";
+          }
+        } else {
+          next = lastFlowAppStateRef.current || "seminar";
+          if (next === "registration" && prog?.formData && isParticipantProfileComplete(prog.formData)) {
+            next = "seminar";
+          }
+        }
+
         setAppState(next);
-      } else {
+      })
+      .catch(() => {
         setAppState(lastFlowAppStateRef.current || "seminar");
-      }
-      hydratingRef.current = false;
-    });
+      })
+      .finally(() => {
+        hydratingRef.current = false;
+      });
   };
 
   if (!authReady) {
