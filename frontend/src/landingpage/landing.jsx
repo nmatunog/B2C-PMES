@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { B2CLogo } from "../components/B2CLogo.jsx";
 import { COOPERATIVE_NAME, COOPERATIVE_REGION } from "../constants/cooperativeBrand.js";
 import { BylawsModal } from "./BylawsModal.jsx";
+import { LandingFaqAssistant } from "./LandingFaqAssistant.jsx";
 import { pickRandomActivityMessage } from "./cebuActivityMock.js";
 import { SIGNUP_LIVE_ACTIVITY_KEY } from "../lib/signupLiveActivity.js";
 import {
@@ -649,6 +650,7 @@ export default function LandingPage({
       <OrientationExperience />
       <PrivacyModal />
       <BylawsModal active={bylawsActive} onClose={() => setBylawsActive(false)} pdfUrl={BYLAWS_PDF_URL} />
+      <LandingFaqAssistant language={language} onOpenBylaws={() => setBylawsActive(true)} />
 
       {showNotification && (
         <div
