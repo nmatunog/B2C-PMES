@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { B2CLogo } from "../components/B2CLogo.jsx";
 import { COOPERATIVE_NAME, COOPERATIVE_REGION } from "../constants/cooperativeBrand.js";
 import { BylawsModal } from "./BylawsModal.jsx";
+import { pickRandomActivityMessage } from "./cebuActivityMock.js";
 import {
   Users,
   ShieldCheck,
@@ -67,7 +68,8 @@ export default function LandingPage({
 
   const [totalMembers] = useState(ACTUAL_MEMBER_COUNT);
   const [showNotification, setShowNotification] = useState(false);
-  const [lastSignup, setLastSignup] = useState("Talamban, Cebu City");
+  /** Full mock line e.g. "New signup from IT Park" — Cebu-wide random (see cebuActivityMock.js). */
+  const [activityLine, setActivityLine] = useState(() => pickRandomActivityMessage());
   const [formattedYesterday, setFormattedYesterday] = useState("");
 
   useEffect(() => {
@@ -84,16 +86,55 @@ export default function LandingPage({
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
 
-    const timer = setTimeout(() => {
+    const TOAST_MS = 6500;
+    const FIRST_DELAY_MS = 6000 + Math.floor(Math.random() * 4000);
+    const BETWEEN_MIN_MS = 28000;
+    const BETWEEN_MAX_MS = 52000;
+
+    const timeouts = [];
+
+    const showOneToast = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      setActivityLine(pickRandomActivityMessage());
       setShowNotification(true);
-      const locations = ["Mandaue City", "Banilad", "Guadalupe", "Liloan", "Consolacion"];
-      setLastSignup(locations[Math.floor(Math.random() * locations.length)]);
-      setTimeout(() => setShowNotification(false), 5000);
-    }, 20000);
+      timeouts.push(
+        window.setTimeout(() => {
+          setShowNotification(false);
+        }, TOAST_MS),
+      );
+    };
+
+    const scheduleNext = () => {
+      const gap = BETWEEN_MIN_MS + Math.floor(Math.random() * (BETWEEN_MAX_MS - BETWEEN_MIN_MS));
+      timeouts.push(
+        window.setTimeout(() => {
+          showOneToast();
+          scheduleNext();
+        }, gap),
+      );
+    };
+
+    timeouts.push(
+      window.setTimeout(() => {
+        showOneToast();
+        scheduleNext();
+      }, FIRST_DELAY_MS),
+    );
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        // occasional refresh when user returns (light nudge)
+        if (Math.random() < 0.35) {
+          setActivityLine(pickRandomActivityMessage());
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      timeouts.forEach((id) => window.clearTimeout(id));
     };
   }, []);
 
@@ -539,14 +580,18 @@ export default function LandingPage({
       <BylawsModal active={bylawsActive} onClose={() => setBylawsActive(false)} pdfUrl={BYLAWS_PDF_URL} />
 
       {showNotification && (
-        <div className="animate-in slide-in-from-left-full duration-500 fixed bottom-10 left-6 z-[60] max-w-[calc(100vw-3rem)]">
-          <div className="flex items-center gap-4 rounded-2xl border border-white/15 bg-slate-950/88 p-4 text-white shadow-2xl shadow-blue-950/40 backdrop-blur-2xl backdrop-saturate-150">
+        <div
+          className="animate-in slide-in-from-left-full fade-in duration-500 fixed bottom-6 left-4 right-4 z-[90] sm:bottom-10 sm:left-6 sm:right-auto sm:max-w-md"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-start gap-3 rounded-2xl border border-white/15 bg-slate-950/90 p-3.5 text-white shadow-2xl shadow-blue-950/40 backdrop-blur-2xl backdrop-saturate-150 sm:items-center sm:gap-4 sm:p-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-600/30">
-              <Users className="h-5 w-5 text-white" />
+              <Users className="h-5 w-5 text-white" aria-hidden />
             </div>
-            <div className="min-w-0">
-              <p className="mb-1 text-[10px] font-bold uppercase leading-none tracking-widest text-sky-300">Recent Activity</p>
-              <p className="truncate text-sm font-semibold text-white/95">{lastSignup}</p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-0.5 text-[10px] font-bold uppercase leading-none tracking-widest text-sky-300">Live activity</p>
+              <p className="text-sm font-semibold leading-snug text-white/95">{activityLine}</p>
             </div>
           </div>
         </div>
