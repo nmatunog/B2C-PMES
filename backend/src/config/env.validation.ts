@@ -18,11 +18,8 @@ export const envValidationSchema = Joi.object({
   /** xAI / Grok — https://console.x.ai */
   XAI_API_KEY: Joi.string().allow(""),
 
-  /** HS256 secret for POST /auth/admin/login tokens (min 32 chars). */
+  /** HS256 secret for staff JWTs (POST /auth/admin/login, /auth/staff/*). */
   ADMIN_JWT_SECRET: Joi.string().min(32).required(),
-  /** Admin dashboard sign-in (bcrypt hash). Generate: `node scripts/hash-admin-password.js 'your-password'`. */
-  ADMIN_EMAIL: Joi.string().email().required(),
-  ADMIN_PASSWORD_HASH: Joi.string().min(20).required(),
 })
   .custom((value, helpers) => {
     const v = value as {

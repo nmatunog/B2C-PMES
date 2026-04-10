@@ -95,7 +95,9 @@ Wait until the container is healthy (`docker compose ps` or `docker-compose ps`)
 
 | Method | Path | Notes |
 |--------|------|--------|
-| `POST` | `/auth/admin/login` | Body: `{ "email", "password" }` (must match `ADMIN_EMAIL` + bcrypt `ADMIN_PASSWORD_HASH` in `backend/.env`) → `{ accessToken }` |
+| `POST` | `/auth/admin/login` | Body: `{ "email", "password" }` — staff row in `StaffUser` (superuser or admin) → `{ accessToken, expiresIn, role }` |
+| `POST` | `/auth/staff/admins` | Bearer JWT (**superuser** only). Body: `{ "email", "password" }` — creates an **admin** account. |
+| `GET` | `/auth/staff/admins` | Bearer JWT (**superuser** only) — lists admin accounts (no passwords). |
 | `POST` | `/pmes/submit` | Body: `fullName`, `email`, `phone`, `dob`, `gender`, `score`, `passed` |
 | `POST` | `/pmes/loi` | Body: `email`, `address`, `occupation`, `employer`, `initialCapital` |
 | `GET` | `/pmes/certificate?email=&dob=` | 404 if none; returns flat record for certificate UI |
@@ -163,9 +165,8 @@ Never commit `frontend/.env`. Copy from `.env.example` only.
 | `OPENAI_API_KEY` | Required when `AI_PROVIDER=openai`. |
 | `XAI_API_KEY` | Required when `AI_PROVIDER=grok`. |
 | `GEMINI_TTS_MODEL` / `OPENAI_TTS_MODEL` | Optional model overrides. |
-| `ADMIN_JWT_SECRET` | **Required** (min 32 chars). Signs tokens from `POST /auth/admin/login`. |
-| `ADMIN_EMAIL` | **Required.** Admin dashboard sign-in email (checked server-side only). |
-| `ADMIN_PASSWORD_HASH` | **Required.** Bcrypt hash of the admin password. Generate: `cd backend && npm run hash-admin-password -- 'YourPassword'` and paste the line into `.env`. |
+| `ADMIN_JWT_SECRET` | **Required** (min 32 chars). Signs staff JWTs (`/auth/admin/login`, `/auth/staff/*`). |
+| *(no email in env)* | Bootstrap **one** superuser after migrations: `cd backend && npm run create-superuser -- you@example.com 'YourPassword'`. Additional admins are created by the superuser via `POST /auth/staff/admins` or the admin dashboard UI. |
 
 ---
 

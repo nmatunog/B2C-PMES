@@ -130,6 +130,12 @@ export default function App() {
   const [loiData, setLoiData] = useState({ address: "", occupation: "", employer: "", initialCapital: "", agreement: false });
   const [retrievalData, setRetrievalData] = useState({ email: "", dob: "" });
   const [adminCreds, setAdminCreds] = useState({ email: "", password: "" });
+  /** Staff JWT role after admin dashboard login; token kept in memory only. */
+  const [staffRole, setStaffRole] = useState(/** @type {null | "admin" | "superuser"} */ (null));
+  const [staffAccessToken, setStaffAccessToken] = useState(null);
+  const [managedStaffAdmins, setManagedStaffAdmins] = useState([]);
+  const [newStaffAdmin, setNewStaffAdmin] = useState({ email: "", password: "" });
+  const [staffAdminError, setStaffAdminError] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [openCardIndex, setOpenCardIndex] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -461,6 +467,11 @@ export default function App() {
   const handleAdminPortal = () => {
     setError(null);
     setAdminCreds({ email: "", password: "" });
+    setStaffRole(null);
+    setStaffAccessToken(null);
+    setManagedStaffAdmins([]);
+    setNewStaffAdmin({ email: "", password: "" });
+    setStaffAdminError(null);
     setAppState("admin_login");
   };
 
@@ -474,11 +485,44 @@ export default function App() {
     }
     setLoading(true);
     try {
-      const list = await PmesService.getAllRecords(db, appId, adminCreds);
-      setMasterList(Array.isArray(list) ? list : []);
+      const result = await PmesService.getAllRecords(db, appId, adminCreds);
+      setMasterList(result.records);
+      setStaffRole(result.role);
+      setStaffAccessToken(result.accessToken);
+      if (result.role === "superuser") {
+        try {
+          const admins = await PmesService.listStaffAdmins(result.accessToken);
+          setManagedStaffAdmins(Array.isArray(admins) ? admins : []);
+        } catch {
+          setManagedStaffAdmins([]);
+        }
+      } else {
+        setManagedStaffAdmins([]);
+      }
       setAppState("admin_dashboard");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Admin sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateStaffAdminSubmit = async (event) => {
+    event.preventDefault();
+    if (!staffAccessToken || staffRole !== "superuser") return;
+    setStaffAdminError(null);
+    if (!newStaffAdmin.email?.trim() || (newStaffAdmin.password?.length ?? 0) < 8) {
+      setStaffAdminError("Enter an email and a password of at least 8 characters.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await PmesService.createStaffAdmin(staffAccessToken, newStaffAdmin.email.trim(), newStaffAdmin.password);
+      setNewStaffAdmin({ email: "", password: "" });
+      const admins = await PmesService.listStaffAdmins(staffAccessToken);
+      setManagedStaffAdmins(Array.isArray(admins) ? admins : []);
+    } catch (e) {
+      setStaffAdminError(e instanceof Error ? e.message : "Could not create admin.");
     } finally {
       setLoading(false);
     }
@@ -1294,7 +1338,10 @@ export default function App() {
             <p className="text-xs font-black uppercase tracking-widest text-[#004aad]/80">Staff access</p>
             <h1 className="mt-2 text-3xl font-black uppercase tracking-tighter text-[#004aad] sm:text-4xl">Admin sign in</h1>
             <p className="mt-3 text-base font-medium leading-relaxed text-slate-600">
-              Use the admin email and password configured on the API server (backend/.env).
+              Superuser and admin accounts live in the API database. Create the bootstrap superuser once with{" "}
+              <code className="rounded bg-slate-100 px-1 text-sm">npm run create-superuser</code> in{" "}
+              <code className="rounded bg-slate-100 px-1 text-sm">backend/</code>. Admins are created by the superuser from
+              the dashboard.
             </p>
           </div>
           {error && <div className="rounded-2xl bg-amber-50 p-4 text-center font-bold text-amber-900">{error}</div>}
@@ -1352,6 +1399,11 @@ export default function App() {
               onClick={() => {
                 setMasterList([]);
                 setAdminCreds({ email: "", password: "" });
+                setStaffRole(null);
+                setStaffAccessToken(null);
+                setManagedStaffAdmins([]);
+                setNewStaffAdmin({ email: "", password: "" });
+                setStaffAdminError(null);
                 setAppState("landing");
               }}
               className="shrink-0 rounded-xl bg-white/20 px-6 py-3 text-sm font-bold uppercase tracking-widest hover:bg-white/30"
@@ -1359,6 +1411,68 @@ export default function App() {
               Logout
             </button>
           </div>
+          {staffRole === "superuser" ? (
+            <div className="border-b border-slate-200 bg-slate-50 px-6 py-8 lg:px-10">
+              <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Admin accounts</h2>
+              <p className="mt-1 text-sm font-medium text-slate-600">
+                Only you (superuser) can add staff admins. They can open this master list but cannot create other accounts.
+              </p>
+              {staffAdminError ? (
+                <div className="mt-4 rounded-2xl bg-red-50 p-4 text-center text-sm font-bold text-red-800">{staffAdminError}</div>
+              ) : null}
+              <form onSubmit={handleCreateStaffAdminSubmit} className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
+                <div className="min-w-0 flex-1">
+                  <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="new-admin-email">
+                    New admin email
+                  </label>
+                  <input
+                    id="new-admin-email"
+                    type="email"
+                    autoComplete="off"
+                    className="input-field w-full"
+                    placeholder="colleague@example.com"
+                    value={newStaffAdmin.email}
+                    onChange={(e) => setNewStaffAdmin((s) => ({ ...s, email: e.target.value }))}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="new-admin-password">
+                    Temporary password
+                  </label>
+                  <input
+                    id="new-admin-password"
+                    type="password"
+                    autoComplete="new-password"
+                    className="input-field w-full"
+                    placeholder="Min. 8 characters"
+                    value={newStaffAdmin.password}
+                    onChange={(e) => setNewStaffAdmin((s) => ({ ...s, password: e.target.value }))}
+                    minLength={8}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-primary inline-flex shrink-0 items-center justify-center gap-2 px-8 py-4 font-black lg:self-stretch"
+                >
+                  <UserPlus className="h-5 w-5 shrink-0" aria-hidden />
+                  Create admin
+                </button>
+              </form>
+              {managedStaffAdmins.length > 0 ? (
+                <ul className="mt-8 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+                  {managedStaffAdmins.map((a) => (
+                    <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                      <span className="font-bold text-slate-900">{a.email}</span>
+                      <span className="text-xs font-bold uppercase text-slate-400">{a.role}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-6 text-sm font-medium text-slate-500">No admin accounts yet — add one above.</p>
+              )}
+            </div>
+          ) : null}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[56rem] text-left text-sm">
               <thead className="bg-slate-100 text-xs font-bold uppercase tracking-wider text-slate-600">

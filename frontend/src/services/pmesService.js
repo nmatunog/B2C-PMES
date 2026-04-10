@@ -4,17 +4,16 @@ const apiBase = () => (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "
 
 const useRest = () => Boolean(apiBase());
 
-async function adminLogin(email, password) {
+async function staffLoginRequest(email, password) {
   const response = await fetch(`${apiBase()}/auth/admin/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   if (!response.ok) {
-    throw new Error((await response.text()) || "Admin login failed");
+    throw new Error((await response.text()) || "Staff sign-in failed");
   }
-  const data = await response.json();
-  return data.accessToken;
+  return response.json();
 }
 
 export const PmesService = {
@@ -104,20 +103,58 @@ export const PmesService = {
     return records.find((record) => record.passed) || records[0] || null;
   },
 
+  /**
+   * Staff dashboard: PMES master list + role + token for follow-up API calls.
+   * @returns {{ records: unknown[], role: 'admin'|'superuser', accessToken: string }}
+   */
   async getAllRecords(db, appId, credentials) {
     if (useRest()) {
       if (!credentials?.email?.trim() || credentials.password === undefined || credentials.password === "") {
-        throw new Error("Admin email and password required");
+        throw new Error("Staff email and password required");
       }
-      const accessToken = await adminLogin(credentials.email.trim(), credentials.password);
+      const login = await staffLoginRequest(credentials.email.trim(), credentials.password);
+      const accessToken = login.accessToken;
+      const role = login.role;
       const response = await fetch(`${apiBase()}/pmes/admin/records`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!response.ok) {
-        throw new Error((await response.text()) || "Admin list failed");
+        throw new Error((await response.text()) || "Master list failed");
       }
-      return response.json();
+      const records = await response.json();
+      return {
+        records: Array.isArray(records) ? records : [],
+        role,
+        accessToken,
+      };
     }
-    throw new Error("Admin master list requires VITE_API_BASE_URL and Nest API with admin credentials in backend/.env");
+    throw new Error("Staff dashboard requires VITE_API_BASE_URL and the Nest API with a database superuser (npm run create-superuser).");
+  },
+
+  async listStaffAdmins(accessToken) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/auth/staff/admins`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Could not load admin accounts");
+    }
+    return response.json();
+  },
+
+  async createStaffAdmin(accessToken, email, password) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/auth/staff/admins`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Could not create admin");
+    }
+    return response.json();
   },
 };

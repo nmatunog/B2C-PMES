@@ -25,7 +25,7 @@ Full setup, env vars, Firestore paths, Git workflow, and troubleshooting are in 
 
 ## Configuration
 
-Copy `frontend/.env.example` and `backend/.env.example` to `.env` in each project and fill values. Never commit `.env` files. Backend needs **`ADMIN_JWT_SECRET`** (32+ chars), **`ADMIN_EMAIL`**, and bcrypt **`ADMIN_PASSWORD_HASH`** (see `npm run hash-admin-password` in `backend/`) for admin dashboard sign-in and `GET /pmes/admin/records`. TTS: `AI_PROVIDER` + provider keys — see [DEVELOPMENT.md](./DEVELOPMENT.md).
+Copy `frontend/.env.example` and `backend/.env.example` to `.env` in each project and fill values. Never commit `.env` files. Backend needs **`ADMIN_JWT_SECRET`** (32+ chars) for staff JWTs, PostgreSQL, and a one-time **`npm run create-superuser`** (in `backend/`) to create the bootstrap superuser; further admins are created by the superuser only. TTS: `AI_PROVIDER` + provider keys — see [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Preserve your work on GitHub
 

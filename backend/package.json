@@ -9,6 +9,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "hash-admin-password": "node scripts/hash-admin-password.js",
+    "create-superuser": "node scripts/create-superuser.js",
     "test": "jest",
     "test:watch": "jest --watch"
   },
@@ -34,6 +35,7 @@
   "devDependencies": {
     "@nestjs/testing": "^11.1.18",
     "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.2",
     "jest": "^30.3.0",

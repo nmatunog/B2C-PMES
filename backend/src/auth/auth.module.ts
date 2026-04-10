@@ -1,9 +1,10 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
-import { AdminJwtGuard } from "./admin-jwt.guard";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
+import { StaffJwtGuard } from "./staff-jwt.guard";
+import { SuperuserGuard } from "./superuser.guard";
 
 @Module({
   imports: [
@@ -12,12 +13,12 @@ import { AuthService } from "./auth.service";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>("ADMIN_JWT_SECRET"),
-        signOptions: { expiresIn: "8h", subject: "admin" },
+        signOptions: { expiresIn: "8h" },
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AdminJwtGuard],
-  exports: [AuthService, JwtModule, AdminJwtGuard],
+  providers: [AuthService, StaffJwtGuard, SuperuserGuard],
+  exports: [AuthService, JwtModule, StaffJwtGuard, SuperuserGuard],
 })
 export class AuthModule {}

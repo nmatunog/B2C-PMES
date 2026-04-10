@@ -7,6 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/** Back-office staff: one bootstrap superuser (CLI), additional admins created only by superuser. */
+model StaffUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         StaffRole
+  createdAt    DateTime  @default(now())
+  createdById  String?
+  createdBy    StaffUser?  @relation("StaffCreatedBy", fields: [createdById], references: [id])
+  createdStaff StaffUser[] @relation("StaffCreatedBy")
+}
+
+enum StaffRole {
+  SUPERUSER
+  ADMIN
+}
+
 model Participant {
   id            String         @id @default(uuid())
   fullName      String
