@@ -48,12 +48,20 @@ Default Vite dev server: **http://localhost:5173** (confirm in terminal output).
 
 ### Backend (optional until you use the API/DB)
 
+**Prisma and Nest both read `DATABASE_URL` from `backend/.env`.** If you see `P1012` / “Environment variable not found: DATABASE_URL”, create the file first:
+
 ```bash
 cd backend
 cp .env.example .env
-# Set DATABASE_URL to your local or hosted PostgreSQL
+# Edit DATABASE_URL if your Postgres user, password, host, or database name differs
+```
+
+Then:
+
+```bash
 npm install
 npx prisma generate
+npx prisma migrate deploy
 npm run dev
 ```
 
