@@ -53,6 +53,14 @@ const RESUMABLE_APP_STATES = new Set([
   "loi_form",
 ]);
 
+/** Full name, DOB, email, gender — needed for PMES record, certificate, and LOI. */
+function isParticipantProfileComplete(fd) {
+  if (!fd || typeof fd !== "object") return false;
+  return Boolean(
+    String(fd.fullName || "").trim() && fd.dob && String(fd.email || "").trim() && fd.gender,
+  );
+}
+
 function mapFirebaseAuthError(code) {
   switch (code) {
     case "auth/email-already-in-use":
@@ -100,6 +108,8 @@ export default function App() {
   const hydratingRef = useRef(false);
   /** Last PMES flow screen (consent, seminar, …) — used for resume snapshot + landing “Continue PMES”. Starts null until user enters a resumable step or progress loads. */
   const lastFlowAppStateRef = useRef(/** @type {string | null} */ (null));
+  /** Where `registration` was opened from: exam gate, member portal, or default (legacy → seminar). */
+  const registrationNavRef = useRef(/** @type {"exam" | "portal" | "menu"} */ ("menu"));
   /** After email/password auth, jump to this PMES screen (e.g. user tapped Start PMES before signing in). */
   const pendingAfterAuthRef = useRef(/** @type {'consent' | 'retrieval' | null} */ (null));
   const [formData, setFormData] = useState({ fullName: "", gender: "", email: "", phone: "", dob: "" });
@@ -253,7 +263,11 @@ export default function App() {
             } else if (saved === "landing") {
               setAppState("landing");
             } else if (RESUMABLE_APP_STATES.has(saved)) {
-              setAppState(saved);
+              if (saved === "registration" && isParticipantProfileComplete(prog.formData)) {
+                setAppState("seminar");
+              } else {
+                setAppState(saved);
+              }
             }
           }
         } else if (appStateRef.current === "login") {
@@ -545,7 +559,11 @@ export default function App() {
     void loadPmesProgress(db, appId, user.uid).then((prog) => {
       if (prog?.appState && RESUMABLE_APP_STATES.has(prog.appState)) {
         applyLoadedProgress({ ...prog, pmesPaused: false });
-        setAppState(prog.appState);
+        let next = prog.appState;
+        if (next === "registration" && isParticipantProfileComplete(prog.formData)) {
+          next = "seminar";
+        }
+        setAppState(next);
       } else {
         setAppState(lastFlowAppStateRef.current || "seminar");
       }
@@ -731,6 +749,10 @@ export default function App() {
             setAppState("login");
           }}
           onAdminPortal={handleAdminPortal}
+          onMemberProfile={() => {
+            registrationNavRef.current = "portal";
+            setAppState("registration");
+          }}
         />
       </>
     );
@@ -832,7 +854,14 @@ export default function App() {
                   setCurrentStep((step) => step + 1);
                   setOpenCardIndex(0);
                 } else {
-                  setExamQuestions([...questionPool].sort(() => 0.5 - Math.random()).slice(0, 10));
+                  const questions = [...questionPool].sort(() => 0.5 - Math.random()).slice(0, 10);
+                  if (!isParticipantProfileComplete(formData)) {
+                    setExamQuestions(questions);
+                    registrationNavRef.current = "exam";
+                    setAppState("registration");
+                    return;
+                  }
+                  setExamQuestions(questions);
                   setAppState("exam");
                 }
               }}
@@ -1067,7 +1096,14 @@ export default function App() {
               <p key={index}>{paragraph}</p>
             ))}
           </div>
-          <button type="button" onClick={() => setAppState("registration")} className="btn-primary flex w-full items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setFormData((prev) => ({ ...prev, email: user?.email || prev.email }));
+              setAppState("seminar");
+            }}
+            className="btn-primary flex w-full items-center justify-center gap-2"
+          >
             <Lock className="h-6 w-6 shrink-0" />
             I AGREE AND CONTINUE
           </button>
@@ -1075,12 +1111,21 @@ export default function App() {
       </div>
     );
 
-  if (appState === "registration")
+  if (appState === "registration") {
+    const regNav = registrationNavRef.current;
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
         <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-        <div className="card-senior w-full max-w-3xl space-y-12">
-          <h1 className="text-center text-5xl font-black uppercase tracking-tighter text-[#004aad]">PARTICIPANT DATA</h1>
+        <div className="card-senior w-full max-w-3xl space-y-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-black uppercase tracking-tighter text-[#004aad] sm:text-5xl">Member profile</h1>
+            <p className="mt-3 text-lg font-semibold text-slate-600">
+              Used for your PMES record, certificate, LOI, and retrieval. Sign-up already captured your login email.
+            </p>
+            {regNav === "exam" ? (
+              <p className="mt-2 text-sm font-bold text-amber-800">Complete these details to continue to the exam.</p>
+            ) : null}
+          </div>
           <div className="space-y-8">
             {error && <div className="rounded-2xl bg-red-50 p-4 text-center font-bold text-red-600">{error}</div>}
             <input type="text" className="input-field" placeholder="Full Name (First Name MI. Last Name)" value={formData.fullName} onChange={(event) => setFormData({ ...formData, fullName: event.target.value })} />
@@ -1103,22 +1148,45 @@ export default function App() {
             />
             <input type="tel" className="input-field" placeholder="Phone Number" value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} />
             <button
+              type="button"
               onClick={() => {
                 if (!formData.fullName || !formData.dob || !formData.email || !formData.gender) {
                   setError("Fill all fields including gender.");
                   return;
                 }
                 setError(null);
-                setAppState("seminar");
+                const from = registrationNavRef.current;
+                registrationNavRef.current = "menu";
+                if (from === "exam") {
+                  setAppState("exam");
+                } else if (from === "portal") {
+                  setAppState("landing");
+                } else {
+                  setAppState("seminar");
+                }
               }}
-              className="btn-primary w-full py-8 text-3xl font-black uppercase tracking-tighter"
+              className="btn-primary w-full py-6 text-2xl font-black uppercase tracking-tighter sm:py-8 sm:text-3xl"
             >
-              Start Seminar
+              {regNav === "exam" ? "Continue to exam" : regNav === "portal" ? "Save & return home" : "Save & continue"}
             </button>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const from = registrationNavRef.current;
+                  registrationNavRef.current = "menu";
+                  setAppState(from === "exam" ? "seminar" : "landing");
+                }}
+                className="text-sm font-bold text-slate-500 hover:text-[#004aad]"
+              >
+                {regNav === "exam" ? "Back to modules" : "Cancel"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
+  }
 
   if (appState === "admin_dashboard")
     return (

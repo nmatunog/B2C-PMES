@@ -18,6 +18,7 @@ import {
   Wallet,
   Download,
   GraduationCap,
+  IdCard,
 } from "lucide-react";
 
 /**
@@ -39,6 +40,7 @@ export default function LandingPage({
   onStartPmes,
   onRetrieveCertificate,
   onAdminPortal,
+  onMemberProfile,
 }) {
   const ACTUAL_MEMBER_COUNT = 27;
   const INITIAL_INVESTMENT = 1500;
@@ -253,6 +255,20 @@ export default function LandingPage({
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-700"
               >
                 Continue PMES
+              </button>
+            )}
+            {authUser && onMemberProfile && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMemberPortalOpen(false);
+                  setIsMenuOpen(false);
+                  onMemberProfile();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white py-4 font-black text-slate-800 transition-all hover:border-[#004aad]/40 hover:text-[#004aad]"
+              >
+                <IdCard className="h-5 w-5 shrink-0" />
+                Member profile
               </button>
             )}
             <button
@@ -622,18 +638,22 @@ export default function LandingPage({
             </div>
           </div>
           <div className="w-full lg:w-1/2">
-            <div className="relative overflow-hidden rounded-[48px] bg-white p-12 text-slate-900 shadow-2xl">
+            <div className="relative overflow-hidden rounded-[48px] bg-white p-8 text-slate-900 shadow-2xl sm:p-12">
               <Quote className="absolute right-8 top-8 h-12 w-12 text-blue-50 opacity-10" />
-              <p className="mb-8 text-2xl font-bold leading-relaxed text-slate-800">
-                &quot;Being part of B2C Coop is more than just discounts. It&apos;s knowing that every cent I spend supports my
-                community.&quot;
+              <p className="text-xs font-black uppercase tracking-widest text-blue-600">Pre-Membership Education</p>
+              <h3 className="mt-3 text-2xl font-black leading-tight tracking-tight text-slate-900 sm:text-3xl">
+                Ready to join now?
+              </h3>
+              <p className="mt-4 text-lg font-medium leading-relaxed text-slate-600">
+                Start the journey by signing up, then take the interactive Pre-Membership Education Seminar (PMES). You&apos;ll
+                review the privacy notice before the modules begin.
               </p>
               <button
                 type="button"
                 onClick={startPmes}
-                className="group mt-10 flex w-full items-center justify-center gap-2 rounded-3xl bg-slate-900 py-5 text-lg font-black text-white shadow-xl transition-all hover:bg-slate-800"
+                className="group mt-8 flex w-full items-center justify-center gap-2 rounded-3xl bg-slate-900 py-5 text-lg font-black text-white shadow-xl transition-all hover:bg-slate-800"
               >
-                Apply Now <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-2" />
+                Start PMES journey <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-2" />
               </button>
             </div>
           </div>
