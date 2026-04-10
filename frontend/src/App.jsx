@@ -696,13 +696,13 @@ export default function App() {
     return (
       <>
         {identityRibbon}
-        <div className="flex min-h-screen flex-col lg:flex-row">
+        <div className="flex min-h-screen flex-col md:flex-row">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-          <aside className="relative flex flex-col justify-center overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-12 text-white lg:w-[44%] lg:min-h-screen lg:shrink-0 lg:py-16 lg:pl-12 lg:pr-10 xl:pl-16">
+          <aside className="relative flex flex-col justify-center overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-12 text-white md:w-[42%] md:min-h-screen md:shrink-0 md:py-14 md:pl-10 md:pr-8 xl:py-16 xl:pl-14 xl:pr-10">
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-blue-400/20 blur-2xl" aria-hidden />
             <p className="text-xs font-black uppercase tracking-[0.25em] text-white/70">B2C PMES</p>
-            <h1 className="mt-4 max-w-md text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-[2.35rem] lg:leading-[1.15]">
+            <h1 className="mt-4 max-w-md text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-[2.35rem] md:leading-[1.15]">
               Continue your membership journey
             </h1>
             <p className="mt-4 max-w-sm text-base font-medium leading-relaxed text-white/85">
@@ -719,9 +719,9 @@ export default function App() {
               </li>
             </ul>
           </aside>
-          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-5 py-10 sm:px-10 lg:bg-[#f1f5f9] lg:py-12">
-            <div className="w-full max-w-lg rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-900/5 sm:p-10 sm:rounded-[2.25rem]">
-              <div className="text-center lg:text-left">
+          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-5 py-10 sm:px-10 md:bg-[#f1f5f9] md:py-12">
+            <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-900/5 sm:p-10 sm:rounded-[2.25rem]">
+              <div className="text-center md:text-left">
                 <p className="text-xs font-black uppercase tracking-widest text-[#004aad]/80">Member access</p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Continue to PMES</h2>
                 <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600 sm:text-base">
@@ -760,13 +760,13 @@ export default function App() {
     return (
       <>
         {identityRibbon}
-        <div className="flex min-h-screen flex-col lg:flex-row">
+        <div className="flex min-h-screen flex-col md:flex-row">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-          <aside className="relative flex flex-col justify-center overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-10 text-white sm:py-14 lg:w-[44%] lg:min-h-screen lg:shrink-0 lg:py-16 lg:pl-12 lg:pr-10 xl:pl-16">
+          <aside className="relative flex flex-col justify-center overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-10 text-white sm:py-14 md:w-[42%] md:min-h-screen md:shrink-0 md:py-14 md:pl-10 md:pr-8 xl:py-16 xl:pl-14 xl:pr-12">
             <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 rounded-full bg-blue-400/15 blur-2xl" aria-hidden />
             <p className="text-xs font-black uppercase tracking-[0.25em] text-white/70">Member account</p>
-            <h1 className="mt-4 max-w-lg text-3xl font-black leading-[1.12] tracking-tight sm:text-4xl lg:text-[2.5rem] xl:text-[2.75rem]">
+            <h1 className="mt-4 max-w-lg text-3xl font-black leading-[1.12] tracking-tight sm:text-4xl md:text-[2.5rem] xl:text-[2.75rem]">
               {isSignup ? "Create your cooperative login" : "Welcome back, member"}
             </h1>
             <p className="mt-5 max-w-md text-base font-medium leading-relaxed text-white/88 sm:text-lg">
@@ -785,13 +785,13 @@ export default function App() {
               </li>
             </ul>
           </aside>
-          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-4 py-10 sm:px-8 lg:bg-[#f1f5f9] lg:py-12">
+          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-4 py-10 sm:px-8 md:bg-[#f1f5f9] md:py-12">
             <form
               onSubmit={isSignup ? handleSignUpSubmit : handleLoginSubmit}
-              className="w-full max-w-xl rounded-[1.75rem] border border-slate-200/90 bg-white p-7 shadow-xl shadow-slate-900/[0.06] sm:rounded-[2rem] sm:p-9 lg:max-w-[32rem] lg:p-10"
+              className="w-full max-w-xl rounded-[1.75rem] border border-slate-200/90 bg-white p-7 shadow-xl shadow-slate-900/[0.06] sm:rounded-[2rem] sm:p-9 md:max-w-2xl md:p-10"
             >
-              <div className="text-center lg:text-left">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#004aad]/10 text-[#004aad] lg:mx-0 lg:mb-5 lg:h-14 lg:w-14">
+              <div className="text-center md:text-left">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#004aad]/10 text-[#004aad] md:mx-0 md:mb-5 md:h-14 md:w-14">
                   {isSignup ? <UserPlus className="h-7 w-7" aria-hidden /> : <LogIn className="h-7 w-7" aria-hidden />}
                 </div>
                 <p className="text-xs font-black uppercase tracking-widest text-[#004aad]/80">
