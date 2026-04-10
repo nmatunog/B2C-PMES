@@ -21,14 +21,14 @@ import {
 } from "lucide-react";
 
 /**
- * B2C marketing landing (Vite: static assets live in `frontend/public/`, e.g. `BaiCommunityhome.webp`).
+ * B2C marketing landing (Vite: static assets live in `frontend/public/`, e.g. `BaiCommunityhome.png`).
  *
  * Member access uses Firebase **Email / Password** (configured in Firebase Console). PMES progress syncs to Firestore for resume.
  *
  * `resumePmesSuggested` — show “Continue PMES” when the member has unfinished PMES (any saved step) or paused mid-flow.
  */
 export default function LandingPage({
-  heroSrc = "/BaiCommunityhome.webp",
+  heroSrc = "/BaiCommunityhome.png",
   isFirebaseConfigured = true,
   authUser = null,
   resumePmesSuggested = false,
@@ -561,8 +561,14 @@ export default function LandingPage({
               {t.shopBtn}
             </button>
           </div>
-          <div className="animate-in fade-in zoom-in-95 duration-1000 w-full max-w-5xl">
-            <img src={heroSrc} alt="B2C Market" className="max-h-[500px] w-full object-contain drop-shadow-2xl" />
+          <div className="animate-in fade-in zoom-in-95 duration-1000 w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-50/50 shadow-inner">
+            <img
+              src={heroSrc}
+              alt="B2C cooperative marketplace — community stalls and the B2C COOP shop"
+              className="h-auto max-h-[min(22rem,42vh)] w-full object-contain object-center drop-shadow-xl md:max-h-[26rem]"
+              loading="eager"
+              decoding="async"
+            />
           </div>
         </div>
       </section>
