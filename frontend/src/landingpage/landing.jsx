@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { B2CLogo } from "../components/B2CLogo.jsx";
+import { COOPERATIVE_NAME, COOPERATIVE_REGION } from "../constants/cooperativeBrand.js";
 import {
   Users,
   ShieldCheck,
@@ -538,9 +539,13 @@ export default function LandingPage({
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <B2CLogo size="sm" className="shrink-0" />
-            <div className="flex flex-col leading-none">
-              <span className="text-xl font-black tracking-tighter">Cooperative</span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-600">Cebu Visayas</span>
+            <div className="min-w-0 flex flex-col leading-tight">
+              <span className="text-sm font-black tracking-tight text-slate-900 sm:text-lg lg:text-xl">
+                {COOPERATIVE_NAME}.
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-blue-600 sm:text-[10px] sm:tracking-[0.28em]">
+                {COOPERATIVE_REGION}
+              </span>
             </div>
           </div>
           <div className="hidden items-center space-x-8 text-sm font-bold lg:flex">
@@ -844,9 +849,12 @@ export default function LandingPage({
       <footer className="border-t border-slate-100 bg-white py-24">
         <div className="mx-auto grid max-w-7xl gap-16 px-4 sm:px-6 md:grid-cols-3 lg:px-8">
           <div className="col-span-1">
-            <div className="mb-8 flex flex-wrap items-center gap-4">
+            <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
               <B2CLogo size="md" className="shrink-0" />
-              <span className="text-2xl font-black tracking-tighter">Cooperative</span>
+              <div className="min-w-0 flex flex-col leading-tight">
+                <span className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">{COOPERATIVE_NAME}.</span>
+                <span className="text-sm font-bold uppercase tracking-widest text-blue-600">{COOPERATIVE_REGION}</span>
+              </div>
             </div>
             <p className="mb-8 text-lg font-medium leading-relaxed text-slate-500">
               Elevating standards of living through Access, Ownership, Control, and Opportunities.
@@ -883,7 +891,7 @@ export default function LandingPage({
             </ul>
           </div>
           <div className="space-y-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            <p>© 2026 B2C Consumers Cooperative.</p>
+            <p>© 2026 {COOPERATIVE_NAME}.</p>
             <p>Cebu City, Philippines.</p>
             <div className="mt-8 flex gap-4">
               <button type="button" className="text-blue-600">

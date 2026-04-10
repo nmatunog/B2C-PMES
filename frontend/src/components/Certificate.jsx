@@ -1,4 +1,5 @@
 import { BadgeCheck } from "lucide-react";
+import { COOPERATIVE_NAME, COOPERATIVE_REGION } from "../constants/cooperativeBrand.js";
 import { B2CLogo } from "./B2CLogo.jsx";
 
 function formatCertCode(id) {
@@ -28,8 +29,8 @@ export function Certificate({ record }) {
       <div className="relative z-10 space-y-8 sm:space-y-10">
         <div className="flex flex-col items-center gap-4">
           <B2CLogo size="xl" align="center" />
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-[#004aad] sm:text-3xl">B2C Consumers Cooperative</h2>
-          <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">Philippines</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-[#004aad] sm:text-3xl">{COOPERATIVE_NAME}</h2>
+          <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">{COOPERATIVE_REGION}</p>
         </div>
         <h1 className="font-serif text-4xl font-black text-slate-800 sm:text-6xl">Certificate of Completion</h1>
         <p className="text-xl font-bold italic text-slate-500 sm:text-2xl">This official document is awarded to</p>
