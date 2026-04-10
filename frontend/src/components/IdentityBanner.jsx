@@ -1,7 +1,7 @@
 import { Briefcase, User } from "lucide-react";
 
 /**
- * Fixed top-left session ribbon: member (Firebase) shows full name + email; staff shows role + email.
+ * Fixed top-left session ribbon: member shows first + last name + email; staff shows role + email.
  */
 export function IdentityBanner({ member, staff }) {
   if (staff?.email) {

@@ -82,6 +82,27 @@ function composeFullName(first, middle, last) {
     .join(" ");
 }
 
+/** Identity ribbon: show first + last only (no middle name). */
+function displayNameFirstLast(formData, activeRecordFullName, authDisplayName) {
+  const fn = String(formData?.firstName || "").trim();
+  const ln = String(formData?.lastName || "").trim();
+  if (fn && ln) return `${fn} ${ln}`;
+  const fromFull = (s) => {
+    const t = String(s || "").trim();
+    if (!t) return "";
+    const parts = t.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "";
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1]}`;
+  };
+  return (
+    fromFull(formData?.fullName) ||
+    fromFull(activeRecordFullName) ||
+    fromFull(authDisplayName) ||
+    ""
+  );
+}
+
 /**
  * Profile: name (composed or legacy single fullName), DOB, email, gender, phone — for PMES / exam gate.
  * Residence is required when first+last name were captured (new sign-up); older saves may only have `fullName`.
@@ -763,13 +784,9 @@ export default function App() {
     staffSessionEmail && staffRole && appState === "admin_dashboard"
       ? { email: staffSessionEmail, role: staffRole }
       : null;
-  /** Prefer saved profile name; then PMES record; then Firebase displayName (if set); else “Member”. */
+  /** Ribbon shows first + last only (middle omitted; legacy full names → first token + last token). */
   const memberDisplayNameForBanner =
-    String(formData.fullName || "").trim() ||
-    composeFullName(formData.firstName, formData.middleName, formData.lastName) ||
-    String(activeRecord?.fullName || "").trim() ||
-    String(user?.displayName || "").trim() ||
-    "Member";
+    displayNameFirstLast(formData, activeRecord?.fullName, user?.displayName) || "Member";
 
   const memberIdentityForBanner =
     user && appState !== "member_auth" && !staffForBanner
