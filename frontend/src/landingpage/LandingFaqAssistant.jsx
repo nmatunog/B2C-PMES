@@ -25,7 +25,7 @@ function FormattedAnswer({ text }) {
 }
 
 /**
- * Fixed FAQ “chatbot” on the marketing landing: five curated answers from by-laws + intro,
+ * Fixed FAQ “chatbot” on the marketing landing (branded **Ka-uban**): five curated answers from by-laws + intro,
  * plus simple keyword matching (no external AI).
  *
  * @param {{ language?: 'en' | 'ceb', onOpenBylaws?: () => void }} props

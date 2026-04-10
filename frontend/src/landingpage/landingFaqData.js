@@ -4,29 +4,31 @@
  * Not a live LLM; answers are curated for accuracy and accessibility.
  */
 
+import { FAQ_CHATBOT_NAME } from "../constants/cooperativeBrand.js";
+
+const N = FAQ_CHATBOT_NAME;
+
 export const LANDING_FAQ_ASSISTANT = {
   en: {
-    title: "B2C FAQ assistant",
-    subtitle: "Answers from our primary by-laws and member intro",
-    openLabel: "Open FAQ chat",
-    closeLabel: "Close FAQ chat",
+    title: N,
+    subtitle: "FAQ helper · From our primary by-laws and member intro",
+    openLabel: `Open ${N} FAQ`,
+    closeLabel: `Close ${N}`,
     placeholder: "Ask about fees, shares, joining…",
     send: "Send",
-    welcome:
-      "Hi — I’m a quick helper (not a live AI). Pick a question below or type keywords like “fee”, “shares”, or “join”.",
+    welcome: `Hi — I’m ${N}, your FAQ helper here (scripted answers, not a live AI). Pick a question below or try keywords like “fee”, “shares”, or “join”.`,
     noMatch:
       "I don’t have a scripted answer for that. Try one of the five topics below, or open **By-Laws** in the footer for the full document.",
     chipHint: "Common questions",
   },
   ceb: {
-    title: "B2C FAQ assistant",
-    subtitle: "Mga tubag gikan sa among primary by-laws ug mubo nga intro",
-    openLabel: "Ablihi ang FAQ chat",
-    closeLabel: "Sirhi ang FAQ chat",
+    title: N,
+    subtitle: "FAQ helper · Gikan sa among primary by-laws ug mubo nga intro",
+    openLabel: `Ablihi ang FAQ ni ${N}`,
+    closeLabel: `Sirhi si ${N}`,
     placeholder: "Pangutana bahin sa bayad, shares, pag-apil…",
     send: "Padala",
-    welcome:
-      "Kumusta — kining tabang dili live AI. Pilia ang pangutana sa ubos o i-type ang keywords sama sa “bayad”, “shares”, o “apil”.",
+    welcome: `Kumusta — ako si ${N}, imong FAQ helper dinhi (scripted nga tubag, dili live AI). Pilia ang pangutana sa ubos o suwayi ang keywords sama sa “bayad”, “shares”, o “apil”.`,
     noMatch:
       "Walay fixed nga tubag ana. Sulayi ang lima ka topic sa ubos, o ablihi ang **By-Laws** sa footer para sa full document.",
     chipHint: "Kasagarang pangutana",
