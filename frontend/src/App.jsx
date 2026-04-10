@@ -704,9 +704,9 @@ export default function App() {
     return (
       <>
         {identityRibbon}
-        <div className="flex min-h-screen flex-col md:flex-row">
+        <div className="flex min-h-screen flex-col sm:flex-row">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-          <aside className="relative flex flex-col justify-start overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-12 text-white md:w-[42%] md:min-h-screen md:shrink-0 md:py-14 md:pl-10 md:pr-8 xl:py-16 xl:pl-14 xl:pr-10">
+          <aside className="relative flex flex-col justify-start overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-12 text-white sm:w-[42%] sm:min-h-screen sm:shrink-0 sm:py-12 sm:pl-8 sm:pr-6 md:py-14 md:pl-10 md:pr-8 xl:py-16 xl:pl-14 xl:pr-10">
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-blue-400/20 blur-2xl" aria-hidden />
             <div className="relative z-10 mb-8">
@@ -736,9 +736,18 @@ export default function App() {
               </li>
             </ul>
           </aside>
-          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-5 py-10 sm:px-10 md:bg-[#f1f5f9] md:py-12">
+          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-5 py-10 sm:px-10 sm:bg-[#f1f5f9] sm:py-12">
             <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-900/5 sm:p-10 sm:rounded-[2.25rem]">
-              <div className="text-center md:text-left">
+              <div className="mb-6 flex justify-center sm:hidden">
+                <img
+                  src="/b2c-logo.png"
+                  alt="B2C Consumers Cooperative"
+                  className="h-11 w-auto max-w-[13rem] object-contain"
+                  width={168}
+                  height={64}
+                />
+              </div>
+              <div className="text-center sm:text-left">
                 <p className="text-xs font-black uppercase tracking-widest text-[#004aad]/80">Member access</p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Continue to PMES</h2>
                 <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600 sm:text-base">
@@ -777,9 +786,9 @@ export default function App() {
     return (
       <>
         {identityRibbon}
-        <div className="flex min-h-screen flex-col md:flex-row">
+        <div className="flex min-h-screen flex-col sm:flex-row">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-          <aside className="relative flex flex-col justify-start overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-10 text-white sm:py-14 md:w-[42%] md:min-h-screen md:shrink-0 md:py-14 md:pl-10 md:pr-8 xl:py-16 xl:pl-14 xl:pr-12">
+          <aside className="relative flex flex-col justify-start overflow-hidden bg-gradient-to-br from-[#004aad] via-[#003d8f] to-slate-900 px-8 py-10 text-white sm:w-[42%] sm:min-h-screen sm:shrink-0 sm:py-14 sm:pl-8 sm:pr-6 md:pl-10 md:pr-8 xl:py-16 xl:pl-14 xl:pr-12">
             <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 rounded-full bg-blue-400/15 blur-2xl" aria-hidden />
             <div className="relative z-10 mb-8">
@@ -811,21 +820,35 @@ export default function App() {
               </li>
             </ul>
           </aside>
-          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-4 py-10 sm:px-8 md:bg-[#f1f5f9] md:py-12">
+          <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-4 py-10 sm:px-8 sm:bg-[#f1f5f9] sm:py-12">
             <form
               onSubmit={isSignup ? handleSignUpSubmit : handleLoginSubmit}
-              className="w-full max-w-xl rounded-[1.75rem] border border-slate-200/90 bg-white p-7 shadow-xl shadow-slate-900/[0.06] sm:rounded-[2rem] sm:p-9 md:max-w-2xl md:p-10"
+              className="w-full max-w-xl rounded-[1.75rem] border border-slate-200/90 bg-white p-7 shadow-xl shadow-slate-900/[0.06] sm:max-w-2xl sm:rounded-[2rem] sm:p-10"
             >
-              <div className="text-center md:text-left">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#004aad]/10 text-[#004aad] md:mx-0 md:mb-5 md:h-14 md:w-14">
-                  {isSignup ? <UserPlus className="h-7 w-7" aria-hidden /> : <LogIn className="h-7 w-7" aria-hidden />}
+              <div className="mb-5 flex justify-center sm:hidden">
+                <img
+                  src="/b2c-logo.png"
+                  alt="B2C Consumers Cooperative"
+                  className="h-10 w-auto max-w-[12rem] object-contain"
+                  width={160}
+                  height={64}
+                />
+              </div>
+              <div className="text-center sm:text-left">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#004aad]/10 text-[#004aad] sm:mx-0 sm:mb-5 sm:h-14 sm:w-14">
+                  {isSignup ? <UserPlus className="h-7 w-7" aria-hidden /> : <Lock className="h-7 w-7" aria-hidden />}
                 </div>
                 <p className="text-xs font-black uppercase tracking-widest text-[#004aad]/80">
-                  {isSignup ? "New registration" : "Sign in"}
+                  {isSignup ? "New registration" : "Member sign-in"}
                 </p>
                 <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-                  {isSignup ? "Create your login" : "Enter your credentials"}
+                  {isSignup ? "Create your login" : "Log in to continue"}
                 </h2>
+                {!isSignup ? (
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600 sm:text-base">
+                    Resume your PMES, certificate, and member tools.
+                  </p>
+                ) : null}
               </div>
               <div className="mt-8 flex gap-2 rounded-2xl bg-slate-100 p-1.5">
                 <button
@@ -926,10 +949,27 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setAppState("landing")}
-                className="mt-6 w-full rounded-2xl py-3 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-[#004aad]"
+                className={`w-full rounded-2xl py-3 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-[#004aad] ${!isSignup ? "mt-4" : "mt-6"}`}
               >
                 Back to home
               </button>
+              {!isSignup ? (
+                <button
+                  type="button"
+                  onClick={() => switchMemberAuthMode("signup")}
+                  className="mt-3 w-full text-sm font-bold text-[#004aad] hover:underline"
+                >
+                  New member? Create an account
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => switchMemberAuthMode("login")}
+                  className="mt-3 w-full text-sm font-bold text-slate-500 hover:text-[#004aad]"
+                >
+                  Already have an account? Sign in
+                </button>
+              )}
             </form>
           </div>
         </div>
