@@ -10,6 +10,7 @@ import {
 import {
   AlertCircle,
   Briefcase,
+  Calendar,
   Check,
   CheckCircle2,
   Coins,
@@ -19,9 +20,12 @@ import {
   LogIn,
   Lock,
   Mail,
+  MapPin,
+  Phone,
   Printer,
   ShieldAlert,
   Sparkles,
+  User,
   UserPlus,
 } from "lucide-react";
 import { modules } from "./constants/modules";
@@ -70,12 +74,30 @@ const MEMBER_AUTH_REQUIRED_STATES = new Set([
   "payment_portal",
 ]);
 
-/** Full name, DOB, email, gender — needed for PMES record, certificate, and LOI. */
+/** Join name parts for certificates, API `fullName`, and Firebase displayName. */
+function composeFullName(first, middle, last) {
+  return [first, middle, last]
+    .map((s) => String(s ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
+ * Profile: name (composed or legacy single fullName), DOB, email, gender, phone — for PMES / exam gate.
+ * Residence is required when first+last name were captured (new sign-up); older saves may only have `fullName`.
+ */
 function isParticipantProfileComplete(fd) {
   if (!fd || typeof fd !== "object") return false;
-  return Boolean(
-    String(fd.fullName || "").trim() && fd.dob && String(fd.email || "").trim() && fd.gender,
-  );
+  const nameOk =
+    String(fd.fullName || "").trim() ||
+    (String(fd.firstName || "").trim() && String(fd.lastName || "").trim());
+  if (!nameOk || !fd.dob || !String(fd.email || "").trim() || !fd.gender || !String(fd.phone || "").trim()) {
+    return false;
+  }
+  const hasResidence = String(fd.residenceAddress || "").trim();
+  const splitNames = Boolean(String(fd.firstName || "").trim() && String(fd.lastName || "").trim());
+  if (splitNames) return Boolean(hasResidence);
+  return true;
 }
 
 function mapFirebaseAuthError(code) {
@@ -116,7 +138,17 @@ export default function App() {
   }, [appState]);
 
   const [authReady, setAuthReady] = useState(false);
-  const [signUp, setSignUp] = useState({ email: "", password: "", confirm: "" });
+  const [signUp, setSignUp] = useState({
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    phone: "",
+    dob: "",
+    residenceAddress: "",
+    email: "",
+    password: "",
+    confirm: "",
+  });
   const [logIn, setLogIn] = useState({ email: "", password: "" });
   /** Single screen for member sign-in vs register */
   const [memberAuthMode, setMemberAuthMode] = useState(/** @type {"signup" | "login"} */ ("login"));
@@ -133,7 +165,17 @@ export default function App() {
   const registrationNavRef = useRef(/** @type {"exam" | "portal" | "menu"} */ ("menu"));
   /** After email/password auth, jump to this PMES screen (e.g. user tapped Start PMES before signing in). */
   const pendingAfterAuthRef = useRef(/** @type {'consent' | 'retrieval' | null} */ (null));
-  const [formData, setFormData] = useState({ fullName: "", gender: "", email: "", phone: "", dob: "" });
+  const [formData, setFormData] = useState({
+    fullName: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    gender: "",
+    email: "",
+    phone: "",
+    dob: "",
+    residenceAddress: "",
+  });
   const [loiData, setLoiData] = useState({ address: "", occupation: "", employer: "", initialCapital: "", agreement: false });
   const [retrievalData, setRetrievalData] = useState({ email: "", dob: "" });
   const [adminCreds, setAdminCreds] = useState({ email: "", password: "" });
@@ -256,10 +298,14 @@ export default function App() {
         applyLoadedProgress({
           formData: {
             fullName: "",
+            firstName: "",
+            middleName: "",
+            lastName: "",
             gender: "",
             email: u.email || "",
             phone: "",
             dob: "",
+            residenceAddress: "",
           },
         });
         setPmesPaused(false);
@@ -588,7 +634,28 @@ export default function App() {
       setError("Firebase is not configured. Add VITE_FIREBASE_* keys in frontend/.env.");
       return;
     }
+    const fn = signUp.firstName.trim();
+    const ln = signUp.lastName.trim();
+    const mn = signUp.middleName.trim();
+    const phone = signUp.phone.trim();
+    const addr = signUp.residenceAddress.trim();
     const email = signUp.email.trim();
+    if (!fn || !ln) {
+      setError("First name and last name are required.");
+      return;
+    }
+    if (!signUp.dob) {
+      setError("Date of birth is required.");
+      return;
+    }
+    if (!phone) {
+      setError("Mobile number is required.");
+      return;
+    }
+    if (!addr) {
+      setError("Residence address is required.");
+      return;
+    }
     if (!email || !signUp.password) {
       setError("Email and password are required.");
       return;
@@ -597,10 +664,22 @@ export default function App() {
       setError("Passwords do not match.");
       return;
     }
+    const fullName = composeFullName(fn, mn, ln);
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, signUp.password);
-      setFormData((prev) => ({ ...prev, email }));
+      const cred = await createUserWithEmailAndPassword(auth, email, signUp.password);
+      await updateProfile(cred.user, { displayName: fullName }).catch(() => null);
+      setFormData((prev) => ({
+        ...prev,
+        email,
+        firstName: fn,
+        middleName: mn,
+        lastName: ln,
+        fullName,
+        phone,
+        dob: signUp.dob,
+        residenceAddress: addr,
+      }));
       setLogIn({ email, password: "" });
       setPmesPaused(false);
       setAppState("consent");
@@ -687,6 +766,7 @@ export default function App() {
   /** Prefer saved profile name; then PMES record; then Firebase displayName (if set); else “Member”. */
   const memberDisplayNameForBanner =
     String(formData.fullName || "").trim() ||
+    composeFullName(formData.firstName, formData.middleName, formData.lastName) ||
     String(activeRecord?.fullName || "").trim() ||
     String(user?.displayName || "").trim() ||
     "Member";
@@ -880,6 +960,85 @@ export default function App() {
                 </div>
               )}
               <div className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
+                {isSignup ? (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="relative">
+                        <User className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+                        <input
+                          type="text"
+                          name="given-name"
+                          autoComplete="given-name"
+                          className="input-field !py-[1.1rem] !pl-12 !text-base sm:!text-lg"
+                          placeholder="First name"
+                          value={signUp.firstName}
+                          onChange={(e) => setSignUp((s) => ({ ...s, firstName: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div className="relative">
+                        <User className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+                        <input
+                          type="text"
+                          name="additional-name"
+                          autoComplete="additional-name"
+                          className="input-field !py-[1.1rem] !pl-12 !text-base sm:!text-lg"
+                          placeholder="Middle name (optional)"
+                          value={signUp.middleName}
+                          onChange={(e) => setSignUp((s) => ({ ...s, middleName: e.target.value }))}
+                        />
+                      </div>
+                      <div className="relative">
+                        <User className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+                        <input
+                          type="text"
+                          name="family-name"
+                          autoComplete="family-name"
+                          className="input-field !py-[1.1rem] !pl-12 !text-base sm:!text-lg"
+                          placeholder="Last name"
+                          value={signUp.lastName}
+                          onChange={(e) => setSignUp((s) => ({ ...s, lastName: e.target.value }))}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <Phone className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+                      <input
+                        type="tel"
+                        autoComplete="tel-national"
+                        inputMode="tel"
+                        className="input-field !py-[1.1rem] !pl-12 !text-base sm:!text-lg"
+                        placeholder="Mobile number"
+                        value={signUp.phone}
+                        onChange={(e) => setSignUp((s) => ({ ...s, phone: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="relative">
+                      <Calendar className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+                      <input
+                        type="date"
+                        className="input-field !py-[1.1rem] !pl-12 !text-base sm:!text-lg"
+                        value={signUp.dob}
+                        onChange={(e) => setSignUp((s) => ({ ...s, dob: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="relative">
+                      <MapPin className="pointer-events-none absolute left-4 top-4 h-5 w-5 text-slate-400" aria-hidden />
+                      <textarea
+                        autoComplete="street-address"
+                        className="input-field min-h-[5.5rem] resize-y !py-[1rem] !pl-12 !text-base sm:!text-lg"
+                        placeholder="Residence address"
+                        rows={3}
+                        value={signUp.residenceAddress}
+                        onChange={(e) => setSignUp((s) => ({ ...s, residenceAddress: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </>
+                ) : null}
                 <div className="relative">
                   <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
                   <input
@@ -1045,6 +1204,10 @@ export default function App() {
           onOpenLoi={() => {
             if (!isFirebaseConfigured || !user) return;
             setPmesPaused(false);
+            setLoiData((prev) => ({
+              ...prev,
+              address: String(prev.address || "").trim() || String(formData.residenceAddress || "").trim() || "",
+            }));
             setAppState("loi_form");
           }}
           onOpenPayment={() => {
@@ -1296,7 +1459,17 @@ export default function App() {
                 <Printer aria-hidden />
                 Print / Save as PDF
               </button>
-              <button type="button" onClick={() => setAppState("loi_form")} className="btn-primary flex-1 py-8 text-2xl uppercase tracking-tighter">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoiData((prev) => ({
+                    ...prev,
+                    address: String(prev.address || "").trim() || String(formData.residenceAddress || "").trim() || "",
+                  }));
+                  setAppState("loi_form");
+                }}
+                className="btn-primary flex-1 py-8 text-2xl uppercase tracking-tighter"
+              >
                 <Briefcase aria-hidden />
                 Letter of Intent
               </button>
@@ -1453,7 +1626,8 @@ export default function App() {
           <div className="text-center">
             <h1 className="text-4xl font-black uppercase tracking-tighter text-[#004aad] sm:text-5xl">Member profile</h1>
             <p className="mt-3 text-lg font-semibold text-slate-600">
-              Used for your PMES record, certificate, LOI, and retrieval. Sign-up already captured your login email.
+              Confirm or edit your details for your PMES record, certificate, LOI, and retrieval. Sign-up already captured your
+              login email and basic profile.
             </p>
             {regNav === "exam" ? (
               <p className="mt-2 text-sm font-bold text-amber-800">Complete these details to continue to the exam.</p>
@@ -1461,7 +1635,47 @@ export default function App() {
           </div>
           <div className="space-y-8">
             {error && <div className="rounded-2xl bg-red-50 p-4 text-center font-bold text-red-600">{error}</div>}
-            <input type="text" className="input-field" placeholder="Full Name (First Name MI. Last Name)" value={formData.fullName} onChange={(event) => setFormData({ ...formData, fullName: event.target.value })} />
+            <div className="grid gap-6 sm:grid-cols-3">
+              <input
+                type="text"
+                className="input-field"
+                placeholder="First name"
+                value={formData.firstName}
+                onChange={(event) =>
+                  setFormData((prev) => {
+                    const next = { ...prev, firstName: event.target.value };
+                    next.fullName = composeFullName(next.firstName, next.middleName, next.lastName);
+                    return next;
+                  })
+                }
+              />
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Middle name (optional)"
+                value={formData.middleName}
+                onChange={(event) =>
+                  setFormData((prev) => {
+                    const next = { ...prev, middleName: event.target.value };
+                    next.fullName = composeFullName(next.firstName, next.middleName, next.lastName);
+                    return next;
+                  })
+                }
+              />
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Last name"
+                value={formData.lastName}
+                onChange={(event) =>
+                  setFormData((prev) => {
+                    const next = { ...prev, lastName: event.target.value };
+                    next.fullName = composeFullName(next.firstName, next.middleName, next.lastName);
+                    return next;
+                  })
+                }
+              />
+            </div>
             <div className="grid grid-cols-2 gap-6">
               <input type="date" className="input-field" value={formData.dob} onChange={(event) => setFormData({ ...formData, dob: event.target.value })} />
               <select className="input-field" value={formData.gender} onChange={(event) => setFormData({ ...formData, gender: event.target.value })}>
@@ -1479,18 +1693,36 @@ export default function App() {
               readOnly={Boolean(user?.email)}
               title={user?.email ? "Email is tied to your member login." : undefined}
             />
-            <input type="tel" className="input-field" placeholder="Phone Number" value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} />
+            <input type="tel" className="input-field" placeholder="Mobile number" value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} />
+            <textarea
+              className="input-field min-h-[6rem] resize-y"
+              placeholder="Residence address"
+              rows={3}
+              value={formData.residenceAddress}
+              onChange={(event) => setFormData({ ...formData, residenceAddress: event.target.value })}
+            />
             <button
               type="button"
               onClick={() => {
-                if (!formData.fullName || !formData.dob || !formData.email || !formData.gender) {
-                  setError("Fill all fields including gender.");
+                const composed =
+                  composeFullName(formData.firstName, formData.middleName, formData.lastName).trim() ||
+                  String(formData.fullName || "").trim();
+                if (!composed || !formData.dob || !formData.email || !formData.gender) {
+                  setError("Fill all required fields including name, gender, and date of birth.");
+                  return;
+                }
+                if (!String(formData.phone || "").trim()) {
+                  setError("Mobile number is required.");
+                  return;
+                }
+                if (!String(formData.residenceAddress || "").trim()) {
+                  setError("Residence address is required.");
                   return;
                 }
                 setError(null);
-                const name = String(formData.fullName || "").trim();
-                if (name && user) {
-                  void updateProfile(user, { displayName: name }).catch(() => null);
+                setFormData((prev) => ({ ...prev, fullName: composed }));
+                if (user) {
+                  void updateProfile(user, { displayName: composed.trim() }).catch(() => null);
                 }
                 const from = registrationNavRef.current;
                 registrationNavRef.current = "menu";
