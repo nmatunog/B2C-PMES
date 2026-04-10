@@ -1,8 +1,21 @@
-import { addDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 
 const apiBase = () => (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 const useRest = () => Boolean(apiBase());
+
+async function adminLogin(code) {
+  const response = await fetch(`${apiBase()}/auth/admin/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  if (!response.ok) {
+    throw new Error((await response.text()) || "Admin login failed");
+  }
+  const data = await response.json();
+  return data.accessToken;
+}
 
 export const PmesService = {
   async saveRecord(db, appId, user, data) {
@@ -67,7 +80,7 @@ export const PmesService = {
     return { success: true, id: docRef.id };
   },
 
-  async findRecord(db, appId, email, dob) {
+  async findRecord(db, appId, email, dob, user) {
     if (useRest()) {
       const params = new URLSearchParams({ email, dob });
       const response = await fetch(`${apiBase()}/pmes/certificate?${params}`);
@@ -77,8 +90,10 @@ export const PmesService = {
       }
       return response.json();
     }
+    if (!user) throw new Error("Auth Required");
     const pmesRef = collection(db, "artifacts", appId, "public", "data", "pmes_records");
-    const snapshot = await getDocs(pmesRef);
+    const q = query(pmesRef, where("userId", "==", user.uid));
+    const snapshot = await getDocs(q);
     const records = snapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter(
@@ -91,8 +106,9 @@ export const PmesService = {
   async getAllRecords(db, appId, adminCode) {
     if (useRest()) {
       if (!adminCode?.trim()) throw new Error("Admin code required");
+      const accessToken = await adminLogin(adminCode.trim());
       const response = await fetch(`${apiBase()}/pmes/admin/records`, {
-        headers: { "x-admin-code": adminCode.trim() },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!response.ok) {
         throw new Error((await response.text()) || "Admin list failed");

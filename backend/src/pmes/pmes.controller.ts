@@ -10,7 +10,7 @@ import {
 import { CertificateQueryDto } from "./dto/certificate-query.dto";
 import { CreateLoiDto } from "./dto/create-loi.dto";
 import { CreatePmesDto } from "./dto/create-pmes.dto";
-import { AdminCodeGuard } from "./admin-code.guard";
+import { AdminJwtGuard } from "../auth/admin-jwt.guard";
 import { PmesService } from "./pmes.service";
 
 @Controller("pmes")
@@ -37,7 +37,7 @@ export class PmesController {
   }
 
   @Get("admin/records")
-  @UseGuards(AdminCodeGuard)
+  @UseGuards(AdminJwtGuard)
   adminRecords() {
     return this.pmes.listAllPmesForAdmin();
   }

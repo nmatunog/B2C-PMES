@@ -130,8 +130,14 @@ export default function App() {
   const handleRetrieval = async () => {
     setLoading(true);
     setError(null);
+    const useApi = Boolean((import.meta.env.VITE_API_BASE_URL || "").trim());
+    if (!useApi && !user) {
+      setError("Please wait for sign-in, then try again.");
+      setLoading(false);
+      return;
+    }
     try {
-      const record = await PmesService.findRecord(db, appId, retrievalData.email, retrievalData.dob);
+      const record = await PmesService.findRecord(db, appId, retrievalData.email, retrievalData.dob, user);
       if (record?.passed) {
         setActiveRecord(record);
         setAppState("certificate");

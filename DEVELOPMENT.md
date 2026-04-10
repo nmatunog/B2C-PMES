@@ -12,7 +12,7 @@ Use this document to **reload the project on a new machine**, onboard another de
 | **Backend** | NestJS, Prisma 6, PostgreSQL | **Health**, **AI/TTS proxy**, **PMES REST** (`/pmes/*`) when DB migrated |
 | **AI / TTS** | Gemini, OpenAI, or **Grok (xAI)** via **Nest** (`POST /ai/tts`) | Ka-uban voice; keys only in `backend/.env` (`AI_PROVIDER` + provider key). |
 
-**Source of truth for live app data today:** Firebase (Firestore paths under `artifacts/{VITE_APP_ID}/public/data/…`). The Prisma schema in `backend/` models the **target** relational design for a future Nest migration.
+**Data:** With `VITE_API_BASE_URL` set, PMES/LOI/admin use **Postgres via Nest**. Without it, the app uses **Firebase** paths under `artifacts/{VITE_APP_ID}/public/data/…`.
 
 ---
 
@@ -87,10 +87,11 @@ Wait until the container is healthy (`docker compose ps`), then migrate.
 
 | Method | Path | Notes |
 |--------|------|--------|
+| `POST` | `/auth/admin/login` | Body: `{ "code": "B2Cmmddyyyy" }` (or `ADMIN_STATIC_CODE`) → `{ accessToken }` |
 | `POST` | `/pmes/submit` | Body: `fullName`, `email`, `phone`, `dob`, `gender`, `score`, `passed` |
 | `POST` | `/pmes/loi` | Body: `email`, `address`, `occupation`, `employer`, `initialCapital` |
 | `GET` | `/pmes/certificate?email=&dob=` | 404 if none; returns flat record for certificate UI |
-| `GET` | `/pmes/admin/records` | Header `x-admin-code: B2Cmmddyyyy` (server local date), same as UI prompt |
+| `GET` | `/pmes/admin/records` | Header `Authorization: Bearer <JWT>` from `/auth/admin/login` |
 
 ### Verify builds
 
@@ -121,6 +122,9 @@ B2C-PMES/
 │   ├── src/main.ts, app.module.ts
 │   ├── supabase/schema.sql   # optional SQL artifact from earlier experiments; frontend uses Firebase
 │   └── package.json
+├── firebase/           # firestore.rules (deploy with Firebase CLI)
+├── scripts/            # verify-local.sh
+├── .github/workflows/  # CI
 ├── .cursor/rules/      # AI/editor conventions
 ├── README.md
 └── DEVELOPMENT.md      # this file
@@ -151,17 +155,27 @@ Never commit `frontend/.env`. Copy from `.env.example` only.
 | `OPENAI_API_KEY` | Required when `AI_PROVIDER=openai`. |
 | `XAI_API_KEY` | Required when `AI_PROVIDER=grok`. |
 | `GEMINI_TTS_MODEL` / `OPENAI_TTS_MODEL` | Optional model overrides. |
+| `ADMIN_JWT_SECRET` | **Required** (min 32 chars). Signs tokens from `POST /auth/admin/login`. |
+| `ADMIN_STATIC_CODE` | Optional; if set, accepted as admin login code (e.g. automation) in addition to daily `B2Cmmddyyyy`. |
 
 ---
 
-## 6. Firebase / Firestore expectations
+## 6. Firebase / Firestore
 
-Anonymous (or configured) auth is used from the client. Data is written to:
+Anonymous auth is used from the client. Data paths:
 
 - `artifacts/{VITE_APP_ID}/public/data/pmes_records`
 - `artifacts/{VITE_APP_ID}/public/data/loi_records`
 
-**Production:** define **Firestore Security Rules** so these paths are not world-readable/writable inappropriately. The app historically relied on prototype assumptions; treat rules as mandatory before public launch.
+**Rules file (versioned in repo):** `firebase/firestore.rules` — users may only **read** documents where `userId` matches their auth uid (certificate retrieval uses a query scoped to the current user). **Create** requires `userId` on the new document to match `request.auth.uid`. **Listing all records for admin** in raw Firestore requires `request.auth.token.admin == true` (set via Firebase Admin SDK) or use the **Nest admin API** instead.
+
+Deploy rules (Firebase CLI, logged in):
+
+```bash
+firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
+```
+
+`firebase.json` at the repo root points at `firebase/firestore.rules`.
 
 ---
 
@@ -208,19 +222,23 @@ The root `.gitignore` is configured for these.
 
 ---
 
-## 8. Recommended roadmap (best next moves)
+## 8. CI and verification
 
-Order is intentional:
-
-1. **Git + GitHub** — first safety net (section 7).
-2. **Run Prisma migrations** on every environment; keep `VITE_API_BASE_URL` aligned so the app hits Postgres for PMES data.
-3. **Firestore rules** — still required if anyone uses Firebase-only mode or during cutover.
-4. **Replace weak admin code** — move to real auth (JWT / role) before public launch.
-5. **Extend AI / tests** — optional Q&A route, rate limits; Jest + RTL + e2e.
+- **GitHub Actions:** `.github/workflows/ci.yml` — builds frontend, runs backend `prisma migrate deploy`, `build`, and `jest` against a Postgres service.
+- **Local DB smoke:** `./scripts/verify-local.sh` starts Docker Postgres and applies migrations (start **`npm run dev`** separately, then `curl http://localhost:3000/health`).
 
 ---
 
-## 9. Troubleshooting
+## 9. Recommended follow-ups
+
+1. **Staging deploy** — one hosted API + Postgres + static frontend; see §10.
+2. **Firebase admin claims** — only if you must keep Firestore-based admin list; otherwise rely on Nest + JWT.
+3. **E2E tests** — Playwright against staging.
+4. **Optional AI** — chat/Q&A route behind the same rate limits.
+
+---
+
+## 10. Troubleshooting
 
 | Issue | What to check |
 |-------|----------------|
@@ -229,17 +247,25 @@ Order is intentional:
 | **`P1001` Can’t reach database** | Postgres not running or wrong host/port. Use `docker compose up -d` in `backend/` or start local Postgres; confirm `DATABASE_URL`. |
 | Other Prisma errors | `DATABASE_URL` correct; `npx prisma generate`; migrations applied. |
 | Port already in use | Change Vite port in `vite.config.js` or `PORT` for backend. |
+| **429 Too Many Requests** | Global rate limits apply (see `@nestjs/throttler`). Heavier limits on `/ai/tts` and `/auth/admin/login`. |
 
 ---
 
-## 10. Production deployment (orientation only)
+## 11. Staging / production deployment (orientation)
 
-- **Frontend:** static build (`frontend/dist`) on any static host (Firebase Hosting, Netlify, Vercel, S3+CloudFront). Inject env at **build time** for Vite (`VITE_*`).
-- **Backend:** Node process + PostgreSQL; run migrations in CI/CD; do not expose DB to the public internet without TLS and firewall rules.
+**Frontend:** build `frontend/dist` with production `VITE_*` (especially `VITE_API_BASE_URL` → your API origin, `VITE_FIREBASE_*`). Host on Firebase Hosting, Netlify, Vercel, S3+CloudFront, etc.
+
+**Backend:** run Node (`npm run start` after `npm run build`) behind HTTPS (reverse proxy or platform). Set **strong** `ADMIN_JWT_SECRET`, real `DATABASE_URL`, and AI keys as needed.
+
+**Database:** run `npx prisma migrate deploy` in the release pipeline or container entrypoint before accepting traffic.
+
+**Secrets:** never commit `.env`; use host env vars or a secrets manager.
+
+**Rate limiting:** default in-memory throttler is fine for moderate traffic; for multiple instances use Redis-backed throttling later.
 
 ---
 
-## 11. Related files
+## 12. Related files
 
 - Project principles for AI-assisted work: `.cursor/rules/core-principles.mdc`
 - Prisma models: `backend/prisma/schema.prisma`

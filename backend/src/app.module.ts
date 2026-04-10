@@ -1,9 +1,12 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AiModule } from "./ai/ai.module";
+import { AuthModule } from "./auth/auth.module";
 import { envValidationSchema } from "./config/env.validation";
-import { PrismaModule } from "./prisma/prisma.module";
 import { HealthModule } from "./health/health.module";
+import { PrismaModule } from "./prisma/prisma.module";
 import { PmesModule } from "./pmes/pmes.module";
 
 @Module({
@@ -13,10 +16,18 @@ import { PmesModule } from "./pmes/pmes.module";
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 120,
+      },
+    ]),
     PrismaModule,
+    AuthModule,
     HealthModule,
     AiModule,
     PmesModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

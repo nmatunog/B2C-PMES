@@ -1,8 +1,10 @@
 import { Body, Controller, Post } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { AiService } from "./ai.service";
 import { TtsDto } from "./dto/tts.dto";
 
 @Controller("ai")
+@Throttle({ default: { limit: 30, ttl: 60000 } })
 export class AiController {
   constructor(private readonly ai: AiService) {}
 

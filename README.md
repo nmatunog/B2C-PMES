@@ -11,7 +11,10 @@ Full setup, env vars, Firestore paths, Git workflow, and troubleshooting are in 
 | Path | Description |
 |------|-------------|
 | `frontend/` | Vite + React app (`npm run dev`) |
-| `backend/` | Nest bootstrap + Prisma (`npm run dev`) |
+| `backend/` | Nest + Prisma + PMES/AI REST (`npm run dev`) |
+| `firebase/` | Firestore rules (`firebase deploy --only firestore:rules`) |
+| `scripts/` | Local checks (e.g. `verify-local.sh`) |
+| `.github/workflows/` | CI (frontend build, backend migrate + test) |
 | `.cursor/rules/` | Project conventions for AI-assisted development |
 
 ## Scripts
@@ -22,7 +25,7 @@ Full setup, env vars, Firestore paths, Git workflow, and troubleshooting are in 
 
 ## Configuration
 
-Copy `frontend/.env.example` and `backend/.env.example` to `.env` in each project and fill values. Never commit `.env` files. In-app TTS uses `AI_PROVIDER` (`noop` \| `gemini` \| `openai` \| `grok`) plus the matching API key in `backend/.env` — see [DEVELOPMENT.md](./DEVELOPMENT.md).
+Copy `frontend/.env.example` and `backend/.env.example` to `.env` in each project and fill values. Never commit `.env` files. Backend needs **`ADMIN_JWT_SECRET`** (32+ chars) for `POST /auth/admin/login` and admin PMES routes. TTS: `AI_PROVIDER` + provider keys — see [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Preserve your work on GitHub
 
