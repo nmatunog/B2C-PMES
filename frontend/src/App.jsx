@@ -110,6 +110,8 @@ export default function App() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   /** Which narrative card key (`index-title`) is fetching/buffering audio — avoids disabling every card. */
   const [loadingTtsKey, setLoadingTtsKey] = useState(null);
+  /** Which section is currently playing TTS (for per-card Pause in the header). */
+  const [speakingTtsKey, setSpeakingTtsKey] = useState(null);
   const [ttsError, setTtsError] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
   const [masterList, setMasterList] = useState([]);
@@ -346,15 +348,21 @@ export default function App() {
     if (!enabled) {
       currentAudio.current?.pause();
       setIsSpeaking(false);
+      setSpeakingTtsKey(null);
     }
     setCourseAudioEnabledState(enabled);
     writeCourseAudioPreference(enabled);
   };
 
+  const pauseTts = useCallback(() => {
+    currentAudio.current?.pause();
+    setIsSpeaking(false);
+    setSpeakingTtsKey(null);
+  }, []);
+
   const playTts = async (text, cacheKey) => {
     if (isSpeaking) {
-      currentAudio.current?.pause();
-      setIsSpeaking(false);
+      pauseTts();
       return;
     }
     setTtsError(null);
@@ -363,12 +371,17 @@ export default function App() {
       const wavUrl = await ensureTtsUrl(text, cacheKey);
       const audio = await preloadAudioUrl(wavUrl);
       currentAudio.current = audio;
-      audio.onended = () => setIsSpeaking(false);
+      audio.onended = () => {
+        setIsSpeaking(false);
+        setSpeakingTtsKey(null);
+      };
+      setSpeakingTtsKey(cacheKey);
       setIsSpeaking(true);
       await audio.play();
     } catch (err) {
       setTtsError(formatTtsError(err));
       setIsSpeaking(false);
+      setSpeakingTtsKey(null);
     } finally {
       setLoadingTtsKey(null);
     }
@@ -783,9 +796,12 @@ export default function App() {
                 isOpen={openCardIndex === index}
                 onClick={() => setOpenCardIndex(index)}
                 courseAudioEnabled={courseAudioEnabled}
+                onCourseAudioChange={setCourseAudioEnabled}
                 prefetchTts={prefetchTts}
                 playTts={playTts}
+                pauseTts={pauseTts}
                 isSpeaking={isSpeaking}
+                speakingTtsKey={speakingTtsKey}
                 audioLoading={loadingTtsKey === `${index}-${item.t}`}
               />
             ))}
