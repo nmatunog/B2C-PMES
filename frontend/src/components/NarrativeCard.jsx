@@ -95,10 +95,10 @@ export function NarrativeCard({
 
   return (
     <div
-      className={`mb-5 overflow-hidden rounded-3xl border-2 transition-all duration-300 md:rounded-[2rem] ${
+      className={`mb-5 rounded-3xl border-2 transition-all duration-300 md:rounded-[2rem] ${
         isOpen
-          ? "border-[#004aad] bg-white shadow-[0_12px_40px_-12px_rgba(0,74,173,0.25)]"
-          : "border-slate-200/90 bg-slate-50/80 hover:border-[#004aad]/35 hover:bg-white"
+          ? "overflow-visible border-[#004aad] bg-white shadow-[0_12px_40px_-12px_rgba(0,74,173,0.25)]"
+          : "overflow-hidden border-slate-200/90 bg-slate-50/80 hover:border-[#004aad]/35 hover:bg-white"
       }`}
     >
       <button

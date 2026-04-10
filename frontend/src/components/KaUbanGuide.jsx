@@ -2,41 +2,55 @@ import { MessageCircle, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTypewriter } from "../hooks/useTypewriter";
 
-/** Small corner avatar — image is circular art; ring keeps it crisp on the card. */
-function KaUbanAvatarCorner({ animating }) {
+/**
+ * 3D avatar sits outside the speech card (above top-right); tail bridges toward the box like the old robot control.
+ */
+function KaUbanAvatarWithTail({ animating }) {
   return (
     <div
-      className={`absolute right-2 top-2 z-[1] sm:right-3 sm:top-3 ${
+      className={`pointer-events-none absolute bottom-full right-1 z-20 mb-0.5 flex flex-col items-center sm:right-3 md:right-4 ${
         animating ? "animate-[pulse_2s_ease-in-out_infinite]" : ""
       }`}
       aria-hidden
     >
-      <img
-        src="/kauban-avatar.png"
-        alt=""
-        width={56}
-        height={56}
-        className="h-11 w-11 rounded-full object-cover shadow-md ring-2 ring-white sm:h-14 sm:w-14"
-        decoding="async"
-        loading="lazy"
-      />
+      <div className="overflow-hidden rounded-full bg-white p-[3px] shadow-md shadow-[#004aad]/25 ring-2 ring-[#004aad] ring-offset-2 ring-offset-white">
+        <img
+          src="/kauban-avatar.png"
+          alt=""
+          width={44}
+          height={44}
+          className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
+          decoding="async"
+          loading="lazy"
+        />
+      </div>
+      {/* Same speech-tail shape as the legacy robot talking-head */}
+      <svg
+        className="-mt-px w-8 text-[#004aad] sm:w-9"
+        viewBox="0 0 48 16"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path d="M8 0 Q24 14 40 0 Q44 4 40 8 Q24 18 8 8 Q4 4 8 0Z" />
+      </svg>
     </div>
   );
 }
 
 /**
- * Text-only guide: compact avatar in the speech card corner + typewriter script (does not use TTS).
+ * Text-only guide: avatar + tail outside the card + typewriter script (does not use TTS).
  */
 export function KaUbanGuide({ script, active }) {
   const [replayKey, setReplayKey] = useState(0);
   const { shown, done } = useTypewriter(script ?? "", active, replayKey, 13);
 
   return (
-    <div className="relative min-w-0 w-full">
-      <div className="relative rounded-3xl border-2 border-[#004aad]/20 bg-white pl-4 pt-4 pb-4 pr-[4rem] shadow-[0_8px_30px_-8px_rgba(0,74,173,0.2)] sm:pl-5 sm:pt-5 sm:pb-5 sm:pr-[5.25rem] md:pr-[5.5rem]">
-        <KaUbanAvatarCorner animating={active && !done} />
-        <div className="mb-2 flex min-h-[2.75rem] items-start gap-2 text-xs font-bold uppercase tracking-wider text-[#004aad] sm:min-h-0 sm:items-center">
-          <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0" strokeWidth={2.5} aria-hidden />
+    <div className="relative min-w-0 w-full pt-[3.35rem] sm:pt-[3.15rem]">
+      {/* Top padding reserves space for the avatar+tail (positioned above the card). */}
+      <div className="relative rounded-3xl border-2 border-[#004aad]/20 bg-white p-4 shadow-[0_8px_30px_-8px_rgba(0,74,173,0.2)] sm:p-5 md:p-6">
+        <KaUbanAvatarWithTail animating={active && !done} />
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#004aad]">
+          <MessageCircle className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
           <span>Ka-uban says</span>
         </div>
         <p className="min-h-[4.5rem] text-[1.05rem] leading-relaxed text-slate-800 md:text-lg" lang="en">
