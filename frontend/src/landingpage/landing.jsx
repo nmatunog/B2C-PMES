@@ -3,6 +3,7 @@ import { B2CLogo } from "../components/B2CLogo.jsx";
 import { COOPERATIVE_NAME, COOPERATIVE_REGION } from "../constants/cooperativeBrand.js";
 import { BylawsModal } from "./BylawsModal.jsx";
 import { pickRandomActivityMessage } from "./cebuActivityMock.js";
+import { SIGNUP_LIVE_ACTIVITY_KEY } from "../lib/signupLiveActivity.js";
 import {
   Users,
   ShieldCheck,
@@ -68,6 +69,8 @@ export default function LandingPage({
 
   const [totalMembers] = useState(ACTUAL_MEMBER_COUNT);
   const [showNotification, setShowNotification] = useState(false);
+  /** True when the line is the visitor’s own post-signup activity (device area), not mock FOMO. */
+  const [activityIsYou, setActivityIsYou] = useState(false);
   /** Full mock line e.g. "New signup from IT Park" — Cebu-wide random (see cebuActivityMock.js). */
   const [activityLine, setActivityLine] = useState(() => pickRandomActivityMessage());
   const [formattedYesterday, setFormattedYesterday] = useState("");
@@ -87,14 +90,81 @@ export default function LandingPage({
     window.addEventListener("scroll", handleScroll);
 
     const TOAST_MS = 6500;
+    const SIGNUP_TOAST_MS = 9000;
     const FIRST_DELAY_MS = 6000 + Math.floor(Math.random() * 4000);
+    const MOCK_AFTER_SIGNUP_EXTRA_MS = 32000;
     const BETWEEN_MIN_MS = 28000;
     const BETWEEN_MAX_MS = 52000;
 
     const timeouts = [];
 
+    const formatSignupLine = (area) =>
+      area
+        ? `New signup near ${area} — that's you. Welcome aboard!`
+        : `Your signup just hit the feed — welcome aboard!`;
+
+    const showSignupToast = (area) => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      setActivityIsYou(true);
+      setActivityLine(formatSignupLine(area));
+      setShowNotification(true);
+      timeouts.push(
+        window.setTimeout(() => {
+          setShowNotification(false);
+          setActivityIsYou(false);
+        }, SIGNUP_TOAST_MS),
+      );
+    };
+
+    /** Read session queue from App after signup (location may resolve asynchronously). */
+    const tryConsumeSignupLiveActivity = () => {
+      try {
+        const raw = sessionStorage.getItem(SIGNUP_LIVE_ACTIVITY_KEY);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        if (data.pending === true) return false;
+        if (data.source !== "signup") return false;
+        if (Date.now() - data.at > 30 * 60 * 1000) {
+          sessionStorage.removeItem(SIGNUP_LIVE_ACTIVITY_KEY);
+          return false;
+        }
+        sessionStorage.removeItem(SIGNUP_LIVE_ACTIVITY_KEY);
+        showSignupToast(data.area ?? null);
+        return true;
+      } catch {
+        try {
+          sessionStorage.removeItem(SIGNUP_LIVE_ACTIVITY_KEY);
+        } catch {
+          /* noop */
+        }
+        return false;
+      }
+    };
+
+    const pollSignupUntilReady = () => {
+      if (tryConsumeSignupLiveActivity()) return;
+      try {
+        const raw = sessionStorage.getItem(SIGNUP_LIVE_ACTIVITY_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data.pending !== true) return;
+      } catch {
+        return;
+      }
+      timeouts.push(
+        window.setTimeout(() => {
+          if (tryConsumeSignupLiveActivity()) return;
+          pollSignupUntilReady();
+        }, 450),
+      );
+    };
+
+    const hadSignup = tryConsumeSignupLiveActivity();
+    if (!hadSignup) pollSignupUntilReady();
+
     const showOneToast = () => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      setActivityIsYou(false);
       setActivityLine(pickRandomActivityMessage());
       setShowNotification(true);
       timeouts.push(
@@ -114,19 +184,20 @@ export default function LandingPage({
       );
     };
 
+    const mockKickoff = hadSignup ? FIRST_DELAY_MS + MOCK_AFTER_SIGNUP_EXTRA_MS : FIRST_DELAY_MS;
     timeouts.push(
       window.setTimeout(() => {
         showOneToast();
         scheduleNext();
-      }, FIRST_DELAY_MS),
+      }, mockKickoff),
     );
 
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        // occasional refresh when user returns (light nudge)
         if (Math.random() < 0.35) {
           setActivityLine(pickRandomActivityMessage());
         }
+        tryConsumeSignupLiveActivity();
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -590,7 +661,14 @@ export default function LandingPage({
               <Users className="h-5 w-5 text-white" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="mb-0.5 text-[10px] font-bold uppercase leading-none tracking-widest text-sky-300">Live activity</p>
+              <div className="mb-0.5 flex flex-wrap items-center gap-2">
+                <p className="text-[10px] font-bold uppercase leading-none tracking-widest text-sky-300">Live activity</p>
+                {activityIsYou ? (
+                  <span className="rounded-full bg-sky-500/25 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-200 ring-1 ring-sky-400/40">
+                    You
+                  </span>
+                ) : null}
+              </div>
               <p className="text-sm font-semibold leading-snug text-white/95">{activityLine}</p>
             </div>
           </div>
