@@ -16,12 +16,17 @@ export class AuthController {
 
   /**
    * Firebase → Postgres: upsert `Participant` by Firebase uid / email.
-   * Set `MEMBER_SYNC_SECRET` in production and send `X-Member-Sync-Secret` (do not expose secret to the browser).
+   * Auth: matching `X-Member-Sync-Secret`, or `Authorization: Bearer <Firebase ID token>` when Firebase Admin env is set,
+   * or open when neither secret nor Admin is configured (local dev).
    */
   @Post("sync-member")
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  syncMember(@Headers("x-member-sync-secret") syncSecret: string | undefined, @Body() dto: SyncMemberDto) {
-    this.auth.assertMemberSyncSecret(syncSecret);
+  async syncMember(
+    @Headers("x-member-sync-secret") syncSecret: string | undefined,
+    @Headers("authorization") authorization: string | undefined,
+    @Body() dto: SyncMemberDto,
+  ) {
+    await this.auth.assertMemberSyncAuthorized(syncSecret, authorization, dto);
     return this.auth.syncMember(dto.uid, dto.email, dto.fullName);
   }
 

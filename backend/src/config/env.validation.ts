@@ -27,6 +27,11 @@ export const envValidationSchema = Joi.object({
 
   /** Optional: require `X-Member-Sync-Secret` on POST /auth/sync-member (set in production). */
   MEMBER_SYNC_SECRET: Joi.string().allow(""),
+
+  /** Optional: Firebase Admin (service account) — verify `Authorization: Bearer <idToken>` on POST /auth/sync-member. */
+  FIREBASE_PROJECT_ID: Joi.string().allow(""),
+  FIREBASE_CLIENT_EMAIL: Joi.string().allow(""),
+  FIREBASE_PRIVATE_KEY: Joi.string().allow(""),
 })
   .custom((value, helpers) => {
     const v = value as {

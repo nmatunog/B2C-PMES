@@ -43,6 +43,7 @@ import { pcmToWav, preloadAudioUrl } from "./lib/audio";
 import { auth, db, appId, isFirebaseConfigured } from "./services/firebase";
 import { PmesService } from "./services/pmesService";
 import { clearPmesProgress, loadPmesProgress, savePmesProgress } from "./services/pmesProgressService";
+import { syncMemberToPostgres } from "./services/memberSyncService.js";
 import { requestTts } from "./services/ttsApi";
 import { globalStyles } from "./styles/globalStyles";
 import {
@@ -228,6 +229,8 @@ export default function App() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const hydratingRef = useRef(false);
+  /** Last uid we ran Postgres sync for inside this auth listener (avoids double fire when sign-up also calls sync). */
+  const memberSyncOncePerUidRef = useRef(/** @type {string | null} */ (null));
   /** Last PMES flow screen (consent, seminar, …) — used for resume snapshot + landing “Continue PMES”. Starts null until user enters a resumable step or progress loads. */
   const lastFlowAppStateRef = useRef(/** @type {string | null} */ (null));
   /** Where `registration` was opened from: exam gate, member portal, or default (legacy → seminar). */
@@ -376,12 +379,21 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (!u) {
+        memberSyncOncePerUidRef.current = null;
         hydratingRef.current = false;
         setPmesPaused(false);
         lastFlowAppStateRef.current = null;
         setAppState("landing");
         setAuthReady(true);
         return;
+      }
+
+      if (import.meta.env.VITE_API_BASE_URL?.trim()) {
+        const sid = u.uid;
+        if (memberSyncOncePerUidRef.current !== sid) {
+          memberSyncOncePerUidRef.current = sid;
+          void syncMemberToPostgres(u, u.displayName?.trim() || undefined);
+        }
       }
 
       hydratingRef.current = true;
@@ -901,6 +913,9 @@ export default function App() {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, signUp.password);
       await updateProfile(cred.user, { displayName: fullName }).catch(() => null);
+      if (import.meta.env.VITE_API_BASE_URL?.trim()) {
+        void syncMemberToPostgres(cred.user, fullName);
+      }
       setFormData((prev) => ({
         ...prev,
         email,

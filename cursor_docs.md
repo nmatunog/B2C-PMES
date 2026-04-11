@@ -45,8 +45,10 @@ Local Docker Postgres: set **`DIRECT_URL` identical to `DATABASE_URL`** (see `ba
 
 ## Firebase ↔ Neon member sync
 
-- **Canonical API:** `POST {NEST}/auth/sync-member` with JSON `{ "uid", "email", "fullName?" }`. Upserts Prisma **`Participant`** (adds **`firebaseUid`**). If unset, `MEMBER_SYNC_SECRET` is not required (dev only — set the secret in production).
-- **Optional Next.js** (if you add Next to this repo): `app/api/sync-member/route.js` proxies to Nest using `NEST_API_URL` + `MEMBER_SYNC_SECRET`. This workspace is **Vite + Nest**; raw `lib/db.js` is for edge/scripts, not the main app schema.
+- **Canonical API:** `POST {NEST}/auth/sync-member` with JSON `{ "uid", "email", "fullName?" }`. Upserts Prisma **`Participant`** (adds **`firebaseUid`**).
+- **Auth (pick one):** (1) `Authorization: Bearer <Firebase ID token>` — configure **`FIREBASE_PROJECT_ID`**, **`FIREBASE_CLIENT_EMAIL`**, **`FIREBASE_PRIVATE_KEY`** in `backend/.env` (service account from Firebase Console). (2) **`X-Member-Sync-Secret`** matching `MEMBER_SYNC_SECRET` — for trusted servers only, not the browser. (3) If neither secret nor Firebase Admin is configured, the route accepts unauthenticated calls (**local dev only**).
+- **Frontend:** `VITE_API_BASE_URL` set → after sign-in, the app calls sync with the member’s ID token (`frontend/src/services/memberSyncService.js`).
+- **Optional Next.js** (if you add Next): `app/api/sync-member/route.js` proxies to Nest (`NEST_API_URL`); forward **`Authorization`** from the client or set **`MEMBER_SYNC_SECRET`** server-side. Raw `lib/db.js` is for edge/scripts, not the main app schema.
 
 ## Compliance note
 

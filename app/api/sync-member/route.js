@@ -26,6 +26,10 @@ export async function POST(request) {
     if (secret) {
       headers["X-Member-Sync-Secret"] = secret;
     }
+    const auth = request.headers.get("authorization");
+    if (auth) {
+      headers.Authorization = auth;
+    }
     const res = await fetch(`${base}/auth/sync-member`, {
       method: "POST",
       headers,

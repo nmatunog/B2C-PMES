@@ -8,7 +8,9 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { StaffRole } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
+import * as admin from "firebase-admin";
 import { PrismaService } from "../prisma/prisma.service";
+import type { SyncMemberDto } from "./dto/sync-member.dto";
 
 export type StaffLoginResponse = {
   accessToken: string;
@@ -18,11 +20,101 @@ export type StaffLoginResponse = {
 
 @Injectable()
 export class AuthService {
+  private firebaseAdminApp: admin.app.App | null = null;
+
   constructor(
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
   ) {}
+
+  /** True when all service-account fields are present (does not initialize Firebase). */
+  private isFirebaseAdminConfigured(): boolean {
+    const projectId = String(this.config.get<string>("FIREBASE_PROJECT_ID") ?? "").trim();
+    const clientEmail = String(this.config.get<string>("FIREBASE_CLIENT_EMAIL") ?? "").trim();
+    const privateKey = String(this.config.get<string>("FIREBASE_PRIVATE_KEY") ?? "").trim();
+    return Boolean(projectId && clientEmail && privateKey);
+  }
+
+  private getFirebaseAdminApp(): admin.app.App | null {
+    if (this.firebaseAdminApp) return this.firebaseAdminApp;
+    const projectId = String(this.config.get<string>("FIREBASE_PROJECT_ID") ?? "").trim();
+    const clientEmail = String(this.config.get<string>("FIREBASE_CLIENT_EMAIL") ?? "").trim();
+    let privateKey = String(this.config.get<string>("FIREBASE_PRIVATE_KEY") ?? "").trim();
+    if (!projectId || !clientEmail || !privateKey) return null;
+    privateKey = privateKey.replace(/\\n/g, "\n");
+    if (admin.apps.length > 0) {
+      this.firebaseAdminApp = admin.apps[0] as admin.app.App;
+      return this.firebaseAdminApp;
+    }
+    this.firebaseAdminApp = admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+    });
+    return this.firebaseAdminApp;
+  }
+
+  private extractBearer(authorization: string | undefined): string | null {
+    const v = String(authorization ?? "").trim();
+    if (!v.toLowerCase().startsWith("bearer ")) return null;
+    const t = v.slice(7).trim();
+    return t || null;
+  }
+
+  /**
+   * Allows sync when:
+   * - `X-Member-Sync-Secret` matches `MEMBER_SYNC_SECRET` (server-to-server), or
+   * - `Authorization: Bearer <Firebase ID token>` verifies and matches body `uid` / `email`, or
+   * - neither secret nor Firebase Admin is configured (local dev only).
+   */
+  async assertMemberSyncAuthorized(
+    syncSecret: string | undefined,
+    authorization: string | undefined,
+    dto: SyncMemberDto,
+  ): Promise<void> {
+    const expected = String(this.config.get<string>("MEMBER_SYNC_SECRET") ?? "").trim();
+    const hasSecret = Boolean(expected);
+    const hasAdmin = this.isFirebaseAdminConfigured();
+
+    if (hasSecret && String(syncSecret ?? "").trim() === expected) {
+      return;
+    }
+
+    const bearer = this.extractBearer(authorization);
+    if (bearer) {
+      if (!hasAdmin) {
+        throw new UnauthorizedException("Firebase Admin is not configured; cannot verify ID token");
+      }
+      const app = this.getFirebaseAdminApp();
+      if (!app) {
+        throw new UnauthorizedException("Firebase Admin is not configured");
+      }
+      try {
+        const decoded = await admin.auth(app).verifyIdToken(bearer);
+        if (decoded.uid !== dto.uid) {
+          throw new UnauthorizedException("ID token does not match uid");
+        }
+        const tokenEmail = decoded.email?.trim().toLowerCase();
+        const bodyEmail = dto.email.trim().toLowerCase();
+        if (tokenEmail && tokenEmail !== bodyEmail) {
+          throw new UnauthorizedException("ID token email does not match body");
+        }
+        return;
+      } catch (e) {
+        if (e instanceof UnauthorizedException) throw e;
+        throw new UnauthorizedException("Invalid Firebase ID token");
+      }
+    }
+
+    if (!hasSecret && !hasAdmin) {
+      return;
+    }
+
+    throw new UnauthorizedException("Invalid or missing member sync authorization");
+  }
 
   async staffLogin(email: string, password: string): Promise<StaffLoginResponse> {
     const normalized = email?.trim().toLowerCase();
@@ -73,17 +165,6 @@ export class AuthService {
         createdAt: true,
       },
     });
-  }
-
-  /**
-   * When `MEMBER_SYNC_SECRET` is set in env, callers must send matching `X-Member-Sync-Secret` header.
-   */
-  assertMemberSyncSecret(headerSecret: string | undefined): void {
-    const expected = String(this.config.get<string>("MEMBER_SYNC_SECRET") ?? "").trim();
-    if (!expected) return;
-    if (String(headerSecret ?? "").trim() !== expected) {
-      throw new UnauthorizedException("Invalid or missing member sync secret");
-    }
   }
 
   /**
