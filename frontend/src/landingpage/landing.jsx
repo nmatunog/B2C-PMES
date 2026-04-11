@@ -32,7 +32,7 @@ import {
 const BYLAWS_PDF_URL = "/documents/b2c-bylaws-primary.pdf";
 
 /**
- * B2C marketing landing (Vite: static assets in `frontend/public/`, e.g. `BaiCommunityhome.png` as a subtle full-width backdrop).
+ * B2C marketing landing (Vite: static assets in `frontend/public/`, e.g. `BaiCommunityhome.png` in the full-bleed hero band).
  *
  * Member access uses Firebase **Email / Password** (configured in Firebase Console). PMES progress syncs to Firestore for resume.
  *
@@ -625,26 +625,10 @@ export default function LandingPage({
       </div>
     );
 
-  /** Full-width marketplace scene as a subtle page watermark (under mesh sections). Both layers use scroll attachment for reliable mobile performance. */
-  const pageBackdropStyle = {
-    backgroundColor: "#f0ede6",
-    backgroundImage: `linear-gradient(
-      to bottom,
-      rgba(250, 249, 246, 0.88) 0%,
-      rgba(247, 245, 241, 0.85) 45%,
-      rgba(235, 232, 226, 0.9) 100%
-    ), url(${JSON.stringify(heroSrc)})`,
-    backgroundSize: "cover, cover",
-    backgroundPosition: "center top, center 35%",
-    backgroundRepeat: "no-repeat, no-repeat",
-    backgroundAttachment: "scroll, scroll",
-  };
-
   return (
     <div
       id="top"
-      className="relative isolate min-h-screen overflow-x-hidden pb-24 font-sans text-stone-900 sm:pb-28"
-      style={pageBackdropStyle}
+      className="relative isolate min-h-screen overflow-x-hidden bg-gradient-to-b from-[#f6f4f0] via-[#f8f7f4] to-[#ebe8e2] pb-24 font-sans text-stone-900 sm:pb-28"
     >
       <a
         href="#main-content"
@@ -807,12 +791,12 @@ export default function LandingPage({
       </nav>
 
       <main id="main-content">
-      <section className="mesh-hero relative overflow-hidden pb-14 pt-[5rem] sm:pb-16 sm:pt-[5.5rem] lg:pt-[6.25rem]">
+      <section className="mesh-hero relative overflow-hidden pt-[5rem] sm:pt-[5.5rem] lg:pt-[6.25rem]">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-blue-400/25 blur-3xl sm:h-80 sm:w-80" aria-hidden />
           <div className="absolute -right-16 top-40 h-56 w-56 rounded-full bg-teal-400/20 blur-3xl sm:h-72 sm:w-72" aria-hidden />
         </div>
-        <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 text-center sm:px-6 lg:px-8">
+        <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pb-10 text-center sm:px-6 sm:pb-12 lg:px-8">
           {!isFirebaseConfigured && (
             <div className="mb-6 w-full max-w-4xl rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-950 sm:mb-8">
               Member sign-in needs Firebase: add <code className="rounded bg-amber-100/80 px-1">VITE_FIREBASE_*</code> in{" "}
@@ -877,9 +861,9 @@ export default function LandingPage({
               {t.shopBtn}
             </button>
           </div>
-          <div className="mb-12 w-full sm:mb-14">
+          <div className="w-full">
             {!authUser ? (
-              <div className="glass-card mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl px-4 py-4 sm:max-w-none sm:flex-row sm:justify-center sm:gap-6 sm:px-6 sm:py-4">
+              <div className="glass-card mx-auto mb-0 flex max-w-md flex-col items-center gap-3 rounded-2xl px-4 py-4 sm:max-w-none sm:flex-row sm:justify-center sm:gap-6 sm:px-6 sm:py-4">
                 <p className="text-sm font-medium text-stone-700">Thinking about PMES?</p>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
                   <button
@@ -901,6 +885,18 @@ export default function LandingPage({
             ) : null}
           </div>
         </div>
+
+        {/* Full-bleed hero image: direct child of section so width is 100vw, not constrained by max-w-7xl */}
+        <figure className="relative mt-10 w-full border-y border-stone-200/70 bg-stone-300/25 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45)]">
+          <img
+            src={heroSrc}
+            alt="B2C cooperative marketplace — community stalls and the B2C COOP shop"
+            className="block max-h-[min(24rem,46vh)] w-full object-cover object-center sm:max-h-[min(30rem,50vh)]"
+            loading="eager"
+            decoding="async"
+          />
+        </figure>
+        <div className="h-14 sm:h-16" aria-hidden />
       </section>
 
       <section
