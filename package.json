@@ -5,5 +5,8 @@
   "scripts": {
     "restart": "bash scripts/restart-dev.sh",
     "dev": "bash scripts/restart-dev.sh"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
   }
 }

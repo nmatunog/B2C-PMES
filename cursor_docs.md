@@ -40,8 +40,13 @@ Local Docker Postgres: set **`DIRECT_URL` identical to `DATABASE_URL`** (see `ba
 
 | File | Purpose |
 |------|---------|
-| `backend/.env` | `DATABASE_URL`, `DIRECT_URL`, `ADMIN_JWT_SECRET`, AI keys, `PORT` |
+| `backend/.env` | `DATABASE_URL`, `DIRECT_URL`, `ADMIN_JWT_SECRET`, optional **`MEMBER_SYNC_SECRET`** (if set, `POST /auth/sync-member` requires `X-Member-Sync-Secret`), AI keys, `PORT` |
 | `frontend/.env` | `VITE_API_BASE_URL` (production API URL), `VITE_FIREBASE_*` |
+
+## Firebase ↔ Neon member sync
+
+- **Canonical API:** `POST {NEST}/auth/sync-member` with JSON `{ "uid", "email", "fullName?" }`. Upserts Prisma **`Participant`** (adds **`firebaseUid`**). If unset, `MEMBER_SYNC_SECRET` is not required (dev only — set the secret in production).
+- **Optional Next.js** (if you add Next to this repo): `app/api/sync-member/route.js` proxies to Nest using `NEST_API_URL` + `MEMBER_SYNC_SECRET`. This workspace is **Vite + Nest**; raw `lib/db.js` is for edge/scripts, not the main app schema.
 
 ## Compliance note
 

@@ -24,6 +24,9 @@ export const envValidationSchema = Joi.object({
 
   /** HS256 secret for staff JWTs (POST /auth/admin/login, /auth/staff/*). */
   ADMIN_JWT_SECRET: Joi.string().min(32).required(),
+
+  /** Optional: require `X-Member-Sync-Secret` on POST /auth/sync-member (set in production). */
+  MEMBER_SYNC_SECRET: Joi.string().allow(""),
 })
   .custom((value, helpers) => {
     const v = value as {

@@ -29,6 +29,8 @@ enum StaffRole {
 
 model Participant {
   id            String    @id @default(uuid())
+  /** Firebase Authentication uid — set on first sync after sign-up */
+  firebaseUid   String?   @unique
   fullName      String
   email         String    @unique
   phone         String
