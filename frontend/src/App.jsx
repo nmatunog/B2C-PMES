@@ -691,7 +691,11 @@ export default function App() {
     }
     setLoading(true);
     try {
-      await PmesService.saveLoi(db, appId, user, { ...formData, ...loiData, pmesRecordId: activeRecord.id });
+      await PmesService.saveLoi(db, appId, user, {
+        ...formData,
+        ...loiData,
+        ...(activeRecord?.id != null ? { pmesRecordId: activeRecord.id } : {}),
+      });
       void refreshMembershipLifecycle();
       setAppState("loi_success");
     } catch (e) {
