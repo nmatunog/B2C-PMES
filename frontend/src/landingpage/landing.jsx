@@ -54,6 +54,8 @@ export default function LandingPage({
   onStartPmes,
   onRetrieveCertificate,
   onAdminPortal,
+  /** Signed-in: navigate to full member portal (dashboard); not the profile intake form. */
+  onMemberPortal,
   onMemberProfile,
   onOpenLoi,
   onOpenPayment,
@@ -260,12 +262,12 @@ export default function LandingPage({
     }
   };
 
-  /** Guests go to the full login screen; signed-in members see the portal menu modal. */
+  /** Guests sign in; signed-in members go straight to the member portal dashboard (not the modal). */
   const openMemberPortal = () => {
+    setIsMenuOpen(false);
     if (authUser) {
-      setMemberPortalOpen(true);
+      onMemberPortal?.();
     } else {
-      setIsMenuOpen(false);
       onLogin?.();
     }
   };
@@ -432,6 +434,20 @@ export default function LandingPage({
                 Continue PMES
               </button>
             )}
+            {authUser && onMemberPortal && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMemberPortalOpen(false);
+                  setIsMenuOpen(false);
+                  onMemberPortal();
+                }}
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border-2 border-stone-200 bg-white py-3.5 text-sm font-semibold text-stone-800 transition-all hover:border-blue-500/50 hover:text-blue-800"
+              >
+                <IdCard className="h-5 w-5 shrink-0" aria-hidden />
+                Member portal
+              </button>
+            )}
             {authUser && onMemberProfile && (
               <button
                 type="button"
@@ -440,13 +456,13 @@ export default function LandingPage({
                   setIsMenuOpen(false);
                   onMemberProfile();
                 }}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border-2 border-stone-200 bg-white py-3.5 text-sm font-semibold text-stone-800 transition-all hover:border-blue-500/50 hover:text-blue-800"
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 py-3.5 text-sm font-semibold text-stone-700 transition-all hover:border-blue-500/40 hover:text-blue-800"
               >
-                <IdCard className="h-5 w-5 shrink-0" />
-                Member profile
+                <IdCard className="h-5 w-5 shrink-0" aria-hidden />
+                Edit profile &amp; address
               </button>
             )}
-            {authUser ? (
+            {authUser && !pmesExamPassed ? (
               <button
                 type="button"
                 onClick={() => {
@@ -456,7 +472,7 @@ export default function LandingPage({
                 }}
                 className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700"
               >
-                <PlayCircle className="h-5 w-5 shrink-0" />
+                <PlayCircle className="h-5 w-5 shrink-0" aria-hidden />
                 Start or restart PMES
               </button>
             ) : null}

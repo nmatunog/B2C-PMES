@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Coins,
   FileText,
+  IdCard,
   House,
   Loader2,
   LogIn,
@@ -75,6 +76,7 @@ const RESUMABLE_APP_STATES = new Set([
 const MEMBER_AUTH_REQUIRED_STATES = new Set([
   "consent",
   "registration",
+  "member_portal",
   "seminar",
   "exam",
   "result",
@@ -831,6 +833,17 @@ export default function App() {
   const portalHomeBar =
     appState !== "landing" ? <PortalHomeBar onGoHome={() => setAppState("landing")} /> : null;
 
+  /** Passed PMES: session score or saved API record — hides “Continue PMES” on the landing page when complete. */
+  const pmesExamPassed = Boolean(
+    user && ((typeof score === "number" && score >= 7) || activeRecord?.passed === true),
+  );
+
+  const resumePmesSuggested =
+    Boolean(user) &&
+    !pmesExamPassed &&
+    (pmesPaused ||
+      Boolean(lastFlowAppStateRef.current && RESUMABLE_APP_STATES.has(lastFlowAppStateRef.current)));
+
   if (isFirebaseConfigured && !sessionUser && MEMBER_AUTH_REQUIRED_STATES.has(appState)) {
     return (
       <>
@@ -1163,16 +1176,6 @@ export default function App() {
     );
   }
 
-  /** Show “Continue PMES” on the marketing home when paused mid-flow or any unfinished resumable step is saved. */
-  const resumePmesSuggested =
-    Boolean(user) &&
-    (pmesPaused ||
-      Boolean(lastFlowAppStateRef.current && RESUMABLE_APP_STATES.has(lastFlowAppStateRef.current)));
-
-  const pmesExamPassed = Boolean(
-    user && ((typeof score === "number" && score >= 7) || activeRecord?.passed === true),
-  );
-
   if (appState === "landing")
     return (
       <>
@@ -1223,6 +1226,10 @@ export default function App() {
             setAppState("member_auth");
           }}
           onAdminPortal={handleAdminPortal}
+          onMemberPortal={() => {
+            if (!user) return;
+            setAppState("member_portal");
+          }}
           onMemberProfile={() => {
             if (!user) return;
             registrationNavRef.current = "portal";
@@ -1655,11 +1662,6 @@ export default function App() {
 
   if (appState === "registration") {
     const regNav = registrationNavRef.current;
-    const memberDisplayName = displayNameFirstLast(formData, activeRecord?.fullName, user?.displayName);
-    const referralCode = user?.uid
-      ? `PIONEER-${String(user.uid).replace(/-/g, "").slice(-8).toUpperCase()}`
-      : "PIONEER-PENDING";
-    const pioneerPoints = pioneerReferral.successfulJoinCount * PIONEER_POINTS_PER_JOIN;
     return (
       <>
         {identityRibbon}{portalHomeBar}
@@ -1773,14 +1775,18 @@ export default function App() {
                 if (from === "exam") {
                   setAppState("exam");
                 } else if (from === "portal") {
-                  setAppState("landing");
+                  setAppState("member_portal");
                 } else {
                   setAppState("seminar");
                 }
               }}
               className="btn-primary w-full py-6 text-2xl font-black uppercase tracking-tighter sm:py-8 sm:text-3xl"
             >
-              {regNav === "exam" ? "Continue to exam" : regNav === "portal" ? "Save & return home" : "Save & continue"}
+              {regNav === "exam"
+                ? "Continue to exam"
+                : regNav === "portal"
+                  ? "Save & return to portal"
+                  : "Save & continue"}
             </button>
             <div className="flex flex-wrap justify-center gap-4">
               <button
@@ -1788,25 +1794,111 @@ export default function App() {
                 onClick={() => {
                   const from = registrationNavRef.current;
                   registrationNavRef.current = "menu";
-                  setAppState(from === "exam" ? "seminar" : "landing");
+                  if (from === "exam") setAppState("seminar");
+                  else if (from === "portal") setAppState("member_portal");
+                  else setAppState("landing");
                 }}
                 className="text-sm font-bold text-slate-500 hover:text-[#004aad]"
               >
-                {regNav === "exam" ? "Back to modules" : "Cancel"}
+                {regNav === "exam" ? "Back to modules" : regNav === "portal" ? "Back to member portal" : "Cancel"}
               </button>
             </div>
           </div>
         </div>
-        {regNav === "portal" && user ? (
-          <ReferralEngine
-            memberName={memberDisplayName || "Member"}
-            referralCode={referralCode}
-            successfulJoinCount={pioneerReferral.successfulJoinCount}
-            pioneerPoints={pioneerPoints}
-            invitesThisMonth={pioneerReferral.invitesThisMonth}
-          />
-        ) : null}
       </div>
+      </>
+    );
+  }
+
+  if (appState === "member_portal") {
+    const memberDisplayName = displayNameFirstLast(formData, activeRecord?.fullName, user?.displayName);
+    const referralCode = user?.uid
+      ? `PIONEER-${String(user.uid).replace(/-/g, "").slice(-8).toUpperCase()}`
+      : "PIONEER-PENDING";
+    const pioneerPoints = pioneerReferral.successfulJoinCount * PIONEER_POINTS_PER_JOIN;
+    return (
+      <>
+        {identityRibbon}{portalHomeBar}
+        <div className="flex min-h-screen flex-col items-center gap-10 p-4 pb-20 pt-8 sm:p-8">
+          <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+          <div className="w-full max-w-5xl space-y-8">
+            <div className="text-center">
+              <B2CLogo size="lg" align="center" className="mb-4" />
+              <h1 className="text-4xl font-black uppercase tracking-tighter text-[#004aad] sm:text-5xl">Member portal</h1>
+              <p className="mt-3 text-lg font-semibold text-slate-600">
+                Pioneer growth, your profile, and cooperative tools — without the PMES intake form unless you choose to edit.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  registrationNavRef.current = "portal";
+                  setAppState("registration");
+                }}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-[#004aad]/25 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-[#004aad] shadow-sm transition hover:border-[#004aad]/50 hover:bg-[#004aad]/5"
+              >
+                <IdCard className="h-5 w-5 shrink-0" aria-hidden />
+                Edit profile
+              </button>
+              {pmesExamPassed ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setAppState("certificate")}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-slate-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/80"
+                  >
+                    <FileText className="h-5 w-5 shrink-0 text-emerald-700" aria-hidden />
+                    My certificate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoiData((prev) => ({
+                        ...prev,
+                        address: String(prev.address || "").trim() || String(formData.residenceAddress || "").trim() || "",
+                      }));
+                      setAppState("loi_form");
+                    }}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-slate-800 shadow-sm transition hover:border-[#004aad]/40"
+                  >
+                    <Briefcase className="h-5 w-5 shrink-0 text-[#004aad]" aria-hidden />
+                    Letter of Intent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAppState("payment_portal")}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-slate-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50/80"
+                  >
+                    <Coins className="h-5 w-5 shrink-0 text-amber-700" aria-hidden />
+                    Payments
+                  </button>
+                </>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setRetrievalData((d) => ({ ...d, email: user?.email || d.email }));
+                  setAppState("login_retrieval");
+                }}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-slate-200 bg-slate-50 px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300"
+              >
+                Retrieve certificate
+              </button>
+            </div>
+
+            {user ? (
+              <ReferralEngine
+                memberName={memberDisplayName || "Member"}
+                referralCode={referralCode}
+                successfulJoinCount={pioneerReferral.successfulJoinCount}
+                pioneerPoints={pioneerPoints}
+                invitesThisMonth={pioneerReferral.invitesThisMonth}
+              />
+            ) : null}
+          </div>
+        </div>
       </>
     );
   }
