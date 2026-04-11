@@ -47,6 +47,10 @@ export default function LandingPage({
   resumePmesSuggested = false,
   /** True when the signed-in member has passed the PMES exam (score ≥ 7 or saved record). Used to gate LOI and payment steps. */
   pmesExamPassed = false,
+  /** Pipeline status strip for signed-in users (PMES → LOI → Payment → BOD → …). */
+  joinPipelineBanner = null,
+  /** When true, hide PMES entry points — user has moved past PMES in the pipeline. */
+  hidePmesEntry = false,
   onJoinUs,
   onLogin,
   onLogout,
@@ -59,8 +63,6 @@ export default function LandingPage({
   /** Signed-in: navigate to full member portal (dashboard); not the profile intake form. */
   onMemberPortal,
   onMemberProfile,
-  onOpenLoi,
-  onOpenPayment,
 }) {
   const ACTUAL_MEMBER_COUNT = PUBLIC_MEMBER_COUNT;
   const INITIAL_INVESTMENT = 1500;
@@ -235,33 +237,14 @@ export default function LandingPage({
 
   const retrieveCertificate = () => onRetrieveCertificate?.();
 
-  const handleJoiningPathStep = (stepId) => {
+  /** All path steps use the same join journey routing (PMES → LOI → Payment → BOD → …). */
+  const handleJoiningPathStep = () => {
     setPathGateMessage(null);
     if (!isFirebaseConfigured) {
       setPathGateMessage("Configure Firebase in frontend/.env to use member services.");
       return;
     }
-    if (stepId === "pmes") {
-      continueToPmes();
-      return;
-    }
-    if (!authUser) {
-      setMemberPortalOpen(true);
-      return;
-    }
-    if (!pmesExamPassed) {
-      setPathGateMessage(
-        stepId === "loi"
-          ? "Complete and pass the PMES exam before you can submit your Letter of Intent."
-          : "Complete and pass the PMES exam before paying share capital and membership fees.",
-      );
-      return;
-    }
-    if (stepId === "loi") {
-      onOpenLoi?.();
-    } else if (stepId === "pay") {
-      onOpenPayment?.();
-    }
+    onJoinUs?.();
   };
 
   /** Guests sign in; signed-in members go straight to the member portal dashboard (not the modal). */
@@ -478,7 +461,7 @@ export default function LandingPage({
                 Edit profile &amp; address
               </button>
             )}
-            {authUser && !pmesExamPassed ? (
+            {authUser && !hidePmesEntry && !pmesExamPassed ? (
               <button
                 type="button"
                 onClick={() => {
@@ -490,6 +473,19 @@ export default function LandingPage({
               >
                 <PlayCircle className="h-5 w-5 shrink-0" aria-hidden />
                 Start or restart PMES
+              </button>
+            ) : null}
+            {authUser && hidePmesEntry ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMemberPortalOpen(false);
+                  setIsMenuOpen(false);
+                  onJoinUs?.();
+                }}
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700"
+              >
+                Continue membership
               </button>
             ) : null}
             <button
@@ -580,7 +576,7 @@ export default function LandingPage({
                     <li key={step.id}>
                       <button
                         type="button"
-                        onClick={() => handleJoiningPathStep(step.id)}
+                        onClick={() => handleJoiningPathStep()}
                         className="group flex w-full gap-4 rounded-2xl border border-stone-200/80 bg-white px-4 py-3 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50/50 md:px-5 md:py-4"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-800 transition group-hover:bg-blue-600 group-hover:text-white">
@@ -758,7 +754,7 @@ export default function LandingPage({
               }}
               className="rounded-full bg-gradient-to-b from-blue-600 to-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:from-blue-500 hover:to-blue-600"
             >
-              {authUser ? "PMES" : "Join us"}
+              {authUser ? (hidePmesEntry ? "Continue" : "PMES") : "Join us"}
             </button>
           </div>
           <button
@@ -817,7 +813,7 @@ export default function LandingPage({
                 }}
                 className="min-h-[48px] rounded-xl bg-gradient-to-b from-blue-600 to-blue-700 py-3 font-bold text-white shadow-lg shadow-blue-600/25"
               >
-                {authUser ? "PMES" : "Join us"}
+                {authUser ? (hidePmesEntry ? "Continue" : "PMES") : "Join us"}
               </button>
             </div>
           </div>
@@ -838,7 +834,25 @@ export default function LandingPage({
             </div>
           )}
 
-          {authUser && resumePmesSuggested && onContinuePmes && (
+          {authUser && joinPipelineBanner && (
+            <div
+              className={`mb-6 w-full max-w-4xl rounded-2xl border px-4 py-3.5 text-left shadow-sm sm:mb-8 sm:px-5 ${
+                joinPipelineBanner.tone === "success"
+                  ? "border-emerald-200/90 bg-emerald-50/95 text-emerald-950"
+                  : joinPipelineBanner.tone === "warning"
+                    ? "border-amber-200/90 bg-amber-50/95 text-amber-950"
+                    : "border-[#004aad]/25 bg-[#004aad]/[0.06] text-slate-900"
+              }`}
+              role="status"
+            >
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                Membership journey · {joinPipelineBanner.step}
+              </p>
+              <p className="mt-1.5 text-sm font-semibold leading-snug sm:text-base">{joinPipelineBanner.message}</p>
+            </div>
+          )}
+
+          {authUser && resumePmesSuggested && onContinuePmes && !hidePmesEntry && (
             <div
               className="mb-8 w-full max-w-3xl rounded-2xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3.5 text-left shadow-sm sm:mb-10 sm:px-5 sm:py-4 lg:mb-12"
               role="status"
@@ -1004,7 +1018,11 @@ export default function LandingPage({
               <h3 className="mt-2 text-xl font-extrabold leading-snug text-stone-900 sm:text-2xl">Start when it feels right</h3>
               <p className="mt-3 text-base leading-relaxed text-stone-600">
                 {authUser ? (
-                  <>You&apos;re signed in — continue to PMES from here or use the portal anytime.</>
+                  hidePmesEntry ? (
+                    <>PMES is done for this account — continue to LOI, payment, and Board steps from one place, or open the member portal.</>
+                  ) : (
+                    <>You&apos;re signed in — continue the seminar and exam from here, or use the portal anytime.</>
+                  )
                 ) : (
                   <>
                     Create a free login, then take the interactive PMES. You&apos;ll see the privacy notice before the lessons — nothing
@@ -1015,10 +1033,18 @@ export default function LandingPage({
               {authUser ? (
                 <button
                   type="button"
-                  onClick={continueToPmes}
+                  onClick={hidePmesEntry ? () => onJoinUs?.() : continueToPmes}
                   className="group mt-8 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-stone-800 to-stone-950 py-4 text-base font-bold text-white shadow-xl shadow-stone-900/40 transition-all hover:from-stone-700 hover:to-stone-900"
                 >
-                  Continue to PMES <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden />
+                  {hidePmesEntry ? (
+                    <>
+                      Continue membership <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden />
+                    </>
+                  ) : (
+                    <>
+                      Continue to PMES <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden />
+                    </>
+                  )}
                 </button>
               ) : (
                 <>

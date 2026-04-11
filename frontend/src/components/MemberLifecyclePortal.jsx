@@ -21,6 +21,9 @@ export function MemberLifecyclePortal({
   email,
   loading,
   apiConfigured,
+  /** True when this session has a passing PMES score or certificate (may be ahead of API sync). */
+  clientPmesPassed = false,
+  onViewCertificate,
   onContinuePmes,
   onOpenLoi,
   onOpenPayment,
@@ -81,20 +84,48 @@ export function MemberLifecyclePortal({
       </div>
 
       {stage === "PMES_NOT_PASSED" || stage === "NO_PARTICIPANT" ? (
-        <section className="card-senior space-y-6 p-8 text-left">
-          <div className="flex items-start gap-3">
-            <ClipboardList className="h-10 w-10 shrink-0 text-[#004aad]" aria-hidden />
-            <div>
-              <h2 className="text-xl font-black text-slate-900">Complete PMES first</h2>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">
-                We don&apos;t have a passing PMES record for <span className="font-bold">{email}</span> yet. Finish the seminar and exam, then return here for LOI and payments.
-              </p>
-              <button type="button" onClick={onContinuePmes} className="btn-primary mt-6 w-full sm:w-auto">
-                Continue PMES
-              </button>
+        clientPmesPassed ? (
+          <section className="card-senior space-y-6 border-emerald-200/80 bg-emerald-50/40 p-8 text-left">
+            <div className="flex items-start gap-3">
+              <ClipboardList className="h-10 w-10 shrink-0 text-emerald-700" aria-hidden />
+              <div>
+                <h2 className="text-xl font-black text-slate-900">PMES completed on this account</h2>
+                <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">
+                  Your exam and certificate are available here. Continue with your Letter of Intent and payment — the office may still be syncing your passing record.
+                </p>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  {typeof onViewCertificate === "function" ? (
+                    <button type="button" onClick={onViewCertificate} className="btn-primary w-full sm:w-auto">
+                      View certificate
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={onOpenLoi}
+                    className="w-full rounded-2xl border-2 border-emerald-600 bg-emerald-600 px-6 py-3.5 text-center text-sm font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
+                  >
+                    Letter of Intent
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          <section className="card-senior space-y-6 p-8 text-left">
+            <div className="flex items-start gap-3">
+              <ClipboardList className="h-10 w-10 shrink-0 text-[#004aad]" aria-hidden />
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Complete PMES first</h2>
+                <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">
+                  We don&apos;t have a passing PMES record for <span className="font-bold">{email}</span> yet. Finish the seminar and exam, then return here for LOI and payments.
+                </p>
+                <button type="button" onClick={onContinuePmes} className="btn-primary mt-6 w-full sm:w-auto">
+                  Continue PMES
+                </button>
+              </div>
+            </div>
+          </section>
+        )
       ) : null}
 
       {stage === "AWAITING_LOI" ? (

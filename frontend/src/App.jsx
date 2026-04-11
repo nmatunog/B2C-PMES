@@ -60,6 +60,11 @@ import { ReferralEngine } from "./components/ReferralEngine.jsx";
 import { MemberLifecyclePortal } from "./components/MemberLifecyclePortal.jsx";
 import { PIONEER_POINTS_PER_JOIN } from "./lib/referralTiers.js";
 import { derivePmesIntent } from "./lib/pmesIntent.js";
+import {
+  getJoinPipelineBanner,
+  planJoinNavigation,
+  shouldHidePmesEntry,
+} from "./lib/joinJourney.js";
 import { resolveMemberPortalAccess } from "./lib/membershipAccess.js";
 
 /**
@@ -236,8 +241,10 @@ export default function App() {
   const lastFlowAppStateRef = useRef(/** @type {string | null} */ (null));
   /** Where `registration` was opened from: exam gate, member portal, or default (legacy → seminar). */
   const registrationNavRef = useRef(/** @type {"exam" | "portal" | "menu"} */ ("menu"));
-  /** After email/password auth, jump to this PMES screen (e.g. user tapped Start PMES before signing in). */
-  const pendingAfterAuthRef = useRef(/** @type {'consent' | 'retrieval' | 'pioneer_portal' | null} */ (null));
+  /** After email/password auth: certificate retrieval or pioneer reclaim — not the unified join path. */
+  const pendingAfterAuthRef = useRef(/** @type {'retrieval' | 'pioneer_portal' | null} */ (null));
+  /** After guest taps Join / Start PMES, run unified join navigation once logged in. */
+  const pendingPostAuthUnifiedJoinRef = useRef(false);
   const [formData, setFormData] = useState({
     fullName: "",
     firstName: "",
@@ -400,27 +407,6 @@ export default function App() {
       hydratingRef.current = true;
 
       const pending = pendingAfterAuthRef.current;
-      if (pending === "consent") {
-        pendingAfterAuthRef.current = null;
-        applyLoadedProgress({
-          formData: {
-            fullName: "",
-            firstName: "",
-            middleName: "",
-            lastName: "",
-            gender: "",
-            email: u.email || "",
-            phone: "",
-            dob: "",
-            residenceAddress: "",
-          },
-        });
-        setPmesPaused(false);
-        setAppState("consent");
-        hydratingRef.current = false;
-        setAuthReady(true);
-        return;
-      }
       if (pending === "retrieval") {
         pendingAfterAuthRef.current = null;
         setRetrievalData((d) => ({ ...d, email: u.email || d.email }));
@@ -1015,6 +1001,67 @@ export default function App() {
       });
   };
 
+  const beginJoinAsGuest = useCallback(
+    (authMode) => {
+      if (!isFirebaseConfigured) return;
+      pendingPostAuthUnifiedJoinRef.current = true;
+      setMemberAuthMode(authMode);
+      setAppState("member_auth");
+    },
+    [isFirebaseConfigured],
+  );
+
+  const goJoinUnified = useCallback(async () => {
+    if (!isFirebaseConfigured) return;
+    const sessionUser = user ?? (isFirebaseConfigured ? auth.currentUser : null);
+    if (!sessionUser) return;
+    const api = Boolean((import.meta.env.VITE_API_BASE_URL || "").trim());
+    let life = membershipLifecycle;
+    if (api && sessionUser.email) {
+      life = await refreshMembershipLifecycle();
+    }
+    const examPassed = Boolean((typeof score === "number" && score >= 7) || activeRecord?.passed === true);
+    const intent = derivePmesIntent({
+      pmesPaused,
+      lastFlowAppState: lastFlowAppStateRef.current,
+      pmesExamPassed: examPassed,
+    });
+    const resumeSuggested = Boolean(sessionUser) && !examPassed && intent.resumeRecommended;
+    const plan = planJoinNavigation({
+      useApi: api,
+      lifecycle: life,
+      pmesExamPassed: examPassed,
+      resumePmesSuggested: resumeSuggested,
+      isLoggedIn: true,
+    });
+    setPmesPaused(false);
+    if (plan.type === "state") {
+      setAppState(plan.value);
+    } else if (plan.type === "continue_pmes") {
+      continuePmesFromLanding();
+    }
+  }, [
+    isFirebaseConfigured,
+    user,
+    membershipLifecycle,
+    score,
+    activeRecord,
+    pmesPaused,
+    refreshMembershipLifecycle,
+    continuePmesFromLanding,
+  ]);
+
+  useEffect(() => {
+    if (!authReady || !user || !pendingPostAuthUnifiedJoinRef.current) return;
+    /** Brief delay so Firestore PMES progress can load before we branch the join path. */
+    const t = window.setTimeout(() => {
+      if (!pendingPostAuthUnifiedJoinRef.current) return;
+      pendingPostAuthUnifiedJoinRef.current = false;
+      void goJoinUnified();
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [authReady, user?.uid, goJoinUnified]);
+
   if (!authReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -1056,6 +1103,21 @@ export default function App() {
   const accessForRibbon = resolveMemberPortalAccess({
     useApi: useApiMembership,
     apiLifecycle: membershipLifecycle,
+    pmesExamPassed,
+  });
+
+  const joinPipelineBanner =
+    sessionUser && appState === "landing"
+      ? getJoinPipelineBanner({
+          useApi: useApiMembership,
+          lifecycle: membershipLifecycle,
+          pmesExamPassed,
+        })
+      : null;
+
+  const hidePmesEntry = shouldHidePmesEntry({
+    useApi: useApiMembership,
+    lifecycle: membershipLifecycle,
     pmesExamPassed,
   });
 
@@ -1570,17 +1632,18 @@ export default function App() {
           authUser={user}
           resumePmesSuggested={resumePmesSuggested}
           pmesExamPassed={pmesExamPassed}
+          joinPipelineBanner={joinPipelineBanner}
+          hidePmesEntry={hidePmesEntry}
           onJoinUs={() => {
             if (!isFirebaseConfigured) return;
-            if (user) {
-              setPmesPaused(false);
-              setAppState("consent");
+            if (!user) {
+              beginJoinAsGuest("signup");
               return;
             }
-            setMemberAuthMode("signup");
-            setAppState("member_auth");
+            void goJoinUnified();
           }}
           onLogin={() => {
+            pendingPostAuthUnifiedJoinRef.current = false;
             setMemberAuthMode("login");
             setAppState("member_auth");
           }}
@@ -1588,14 +1651,11 @@ export default function App() {
           onContinuePmes={user && resumePmesSuggested ? continuePmesFromLanding : undefined}
           onStartPmes={() => {
             if (!isFirebaseConfigured) return;
-            if (user) {
-              setPmesPaused(false);
-              setAppState("consent");
+            if (!user) {
+              beginJoinAsGuest("login");
               return;
             }
-            pendingAfterAuthRef.current = "consent";
-            setMemberAuthMode("login");
-            setAppState("member_auth");
+            void goJoinUnified();
           }}
           onRetrieveCertificate={() => {
             if (!isFirebaseConfigured) return;
@@ -1636,20 +1696,6 @@ export default function App() {
             if (!user) return;
             registrationNavRef.current = "portal";
             setAppState("registration");
-          }}
-          onOpenLoi={() => {
-            if (!isFirebaseConfigured || !user) return;
-            setPmesPaused(false);
-            setLoiData((prev) => ({
-              ...prev,
-              address: String(prev.address || "").trim() || String(formData.residenceAddress || "").trim() || "",
-            }));
-            setAppState("loi_form");
-          }}
-          onOpenPayment={() => {
-            if (!isFirebaseConfigured || !user) return;
-            setPmesPaused(false);
-            setAppState("payment_portal");
           }}
         />
       </>
@@ -2247,6 +2293,8 @@ export default function App() {
             email={user?.email || ""}
             loading={membershipLoading}
             apiConfigured={useApiMembership}
+            clientPmesPassed={pmesExamPassed}
+            onViewCertificate={() => setAppState("certificate")}
             onContinuePmes={() => {
               void continuePmesFromLanding();
             }}
