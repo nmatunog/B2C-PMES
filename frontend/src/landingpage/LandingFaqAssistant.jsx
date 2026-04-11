@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import { Loader2, MessageCircle, Send, X } from "lucide-react";
+import { requestLandingChat } from "../services/landingChatApi.js";
 import {
   LANDING_FAQ_ASSISTANT,
   LANDING_FAQ_ITEMS,
   matchLandingFaq,
 } from "./landingFaqData.js";
+
+const hasApiBase = () => Boolean((import.meta.env.VITE_API_BASE_URL || "").trim());
 
 /** Renders `**bold**` segments as <strong>. */
 function FormattedAnswer({ text }) {
@@ -25,8 +28,8 @@ function FormattedAnswer({ text }) {
 }
 
 /**
- * Fixed FAQ “chatbot” on the marketing landing (branded **Ka-uban**): five curated answers from by-laws + intro,
- * plus simple keyword matching (no external AI).
+ * Fixed FAQ “chatbot” on the marketing landing (branded **Ka-uban**): scripted FAQ + keyword match first;
+ * optional Gemini text via `POST /ai/landing-chat` when `LANDING_CHAT_PROVIDER=gemini` on the API.
  *
  * @param {{ language?: 'en' | 'ceb', onOpenBylaws?: () => void }} props
  */
@@ -39,6 +42,7 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
   const listEndRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
   const [messages, setMessages] = useState(() => [
     { role: "bot", key: "welcome", text: strings.welcome },
   ]);
@@ -88,16 +92,41 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
     setInput("");
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const q = input.trim();
-    if (!q) return;
+    if (!q || aiLoading) return;
     const hit = matchLandingFaq(q);
     if (hit) {
       pushExchange(q, answerForItem(hit));
-    } else {
-      pushExchange(q, strings.noMatch);
+      setInput("");
+      return;
     }
-    setInput("");
+
+    if (!hasApiBase()) {
+      pushExchange(q, strings.apiUnavailable);
+      setInput("");
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const result = await requestLandingChat({ message: q, language: lang });
+      if (result.ok) {
+        pushExchange(q, result.text);
+      } else if (result.disabled) {
+        pushExchange(q, strings.aiDisabled);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg === "NO_API_BASE") {
+        pushExchange(q, strings.apiUnavailable);
+      } else {
+        pushExchange(q, strings.aiError);
+      }
+    } finally {
+      setAiLoading(false);
+      setInput("");
+    }
   };
 
   return (
@@ -195,20 +224,22 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  handleSend();
+                  void handleSend();
                 }
               }}
               placeholder={strings.placeholder}
-              className="min-h-[44px] flex-1 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              disabled={aiLoading}
+              className="min-h-[44px] flex-1 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60"
               autoComplete="off"
             />
             <button
               type="button"
-              onClick={handleSend}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              onClick={() => void handleSend()}
+              disabled={aiLoading}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
               aria-label={strings.send}
             >
-              <Send className="h-4 w-4" aria-hidden />
+              {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
             </button>
           </div>
         </div>
