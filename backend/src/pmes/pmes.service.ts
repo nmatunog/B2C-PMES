@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateLoiDto } from "./dto/create-loi.dto";
 import { CreatePmesDto } from "./dto/create-pmes.dto";
 import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
+import { deriveFromMemberProfile, parseFullProfileEnvelope } from "./member-profile.extract";
 import type { LoiSubmission, Participant, PmesRecord } from "@prisma/client";
 
 export type MembershipStage =
@@ -22,6 +24,20 @@ function normalizeEmail(email: string): string {
 type ParticipantWithRelations = Participant & {
   pmesRecords: PmesRecord[];
   loiSubmission: LoiSubmission | null;
+};
+
+export type MemberRegistryRow = {
+  participantId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  dob: string;
+  gender: string;
+  mailingAddress: string | null;
+  civilStatus: string | null;
+  memberIdNo: string | null;
+  loiAddress: string | null;
+  fullProfileCompletedAt: string | null;
 };
 
 @Injectable()
@@ -201,14 +217,139 @@ export class PmesService {
       submittedAt: new Date().toISOString(),
     };
 
+    const derived = deriveFromMemberProfile(parsed);
+
     await this.prisma.participant.update({
       where: { id: participant.id },
       data: {
         fullProfileCompletedAt: new Date(),
         fullProfileJson: JSON.stringify(payload),
+        memberProfileSnapshot: parsed as Prisma.InputJsonValue,
+        mailingAddress: derived.mailingAddress.trim() || null,
+        civilStatus: derived.civilStatus.trim() || null,
+        memberIdNo: derived.memberIdNo.trim() || null,
       },
     });
     return { success: true };
+  }
+
+  /**
+   * Admin: searchable member registry (default: participants who completed the full membership form).
+   * Denormalized columns are filled on submit; older rows fall back to parsing `fullProfileJson`.
+   */
+  async listMemberRegistry(params: { q?: string; page?: number; pageSize?: number; includeAll?: boolean }) {
+    const page = Math.max(1, params.page ?? 1);
+    const pageSize = Math.min(200, Math.max(1, params.pageSize ?? 50));
+    const q = params.q?.trim();
+    const includeAll = params.includeAll === true;
+
+    const searchFilter: Prisma.ParticipantWhereInput | undefined = q
+      ? {
+          OR: [
+            { fullName: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+            { phone: { contains: q, mode: "insensitive" } },
+            { mailingAddress: { contains: q, mode: "insensitive" } },
+            { memberIdNo: { contains: q, mode: "insensitive" } },
+            { civilStatus: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : undefined;
+
+    const where: Prisma.ParticipantWhereInput = {
+      ...(includeAll ? {} : { fullProfileCompletedAt: { not: null } }),
+      ...(searchFilter ? searchFilter : {}),
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.participant.count({ where }),
+      this.prisma.participant.findMany({
+        where,
+        include: { loiSubmission: true },
+        orderBy: [{ fullProfileCompletedAt: "desc" }, { createdAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    return {
+      rows: rows.map((p) => this.buildRegistryRow(p)),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** Admin: full participant detail for registry / audit (includes JSON profile snapshot). */
+  async getParticipantAdminDetail(participantId: string) {
+    const p = await this.prisma.participant.findUnique({
+      where: { id: participantId },
+      include: {
+        loiSubmission: true,
+        pmesRecords: { orderBy: { timestamp: "desc" }, take: 12 },
+      },
+    });
+    if (!p) throw new NotFoundException("Participant not found");
+
+    const envelope = parseFullProfileEnvelope(p.fullProfileJson);
+    const snapshot = p.memberProfileSnapshot ?? envelope?.profile ?? null;
+
+    return {
+      registry: this.buildRegistryRow(p),
+      lifecycle: this.toLifecyclePayload(p),
+      loiSubmission: p.loiSubmission,
+      memberProfileSnapshot: snapshot,
+      fullProfileMeta: envelope
+        ? {
+            formVersion: envelope.formVersion ?? null,
+            sheetFileName: envelope.sheetFileName ?? null,
+            notes: envelope.notes ?? null,
+            submittedAt: envelope.submittedAt ?? null,
+          }
+        : null,
+      pmesRecords: p.pmesRecords.map((r) => ({
+        id: r.id,
+        score: r.score,
+        passed: r.passed,
+        timestamp: r.timestamp.toISOString(),
+      })),
+    };
+  }
+
+  private resolveProfileForDerivation(p: Participant): unknown {
+    if (p.memberProfileSnapshot != null) return p.memberProfileSnapshot;
+    const env = parseFullProfileEnvelope(p.fullProfileJson);
+    return env?.profile ?? null;
+  }
+
+  private buildRegistryRow(p: Participant & { loiSubmission: LoiSubmission | null }): MemberRegistryRow {
+    const profile = this.resolveProfileForDerivation(p);
+    const derived = deriveFromMemberProfile(profile);
+    const mailingFromCol = p.mailingAddress?.trim();
+    const mailingFromProfile = derived.mailingAddress.trim();
+    const mailingFromLoi = p.loiSubmission?.address?.trim();
+    const mailingAddress =
+      mailingFromCol || mailingFromProfile || mailingFromLoi
+        ? mailingFromCol || mailingFromProfile || mailingFromLoi || null
+        : null;
+    const civilRaw = p.civilStatus?.trim() || derived.civilStatus.trim();
+    const idRaw = p.memberIdNo?.trim() || derived.memberIdNo.trim();
+    const civilStatus = civilRaw || null;
+    const memberIdNo = idRaw || null;
+
+    return {
+      participantId: p.id,
+      fullName: p.fullName,
+      email: p.email,
+      phone: p.phone,
+      dob: p.dob,
+      gender: p.gender,
+      mailingAddress,
+      civilStatus,
+      memberIdNo,
+      loiAddress: p.loiSubmission?.address ?? null,
+      fullProfileCompletedAt: p.fullProfileCompletedAt?.toISOString() ?? null,
+    };
   }
 
   /** Admin dashboard: one row per participant with pipeline flags */

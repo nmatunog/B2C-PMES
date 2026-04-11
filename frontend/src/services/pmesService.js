@@ -208,4 +208,33 @@ export const PmesService = {
     }
     return response.json();
   },
+
+  /** Admin: full members registry (search + pagination). */
+  async fetchMemberRegistry(accessToken, { q = "", page = 1, pageSize = 50, includeAll = false } = {}) {
+    if (!useRest()) throw new Error("API required");
+    const params = new URLSearchParams();
+    if (String(q || "").trim()) params.set("q", String(q).trim());
+    params.set("page", String(page));
+    params.set("pageSize", String(pageSize));
+    if (includeAll) params.set("includeAll", "true");
+    const response = await fetch(`${apiBase()}/pmes/admin/member-registry?${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Member registry failed");
+    }
+    return response.json();
+  },
+
+  async fetchParticipantAdminDetail(accessToken, participantId) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(
+      `${apiBase()}/pmes/admin/participants/${encodeURIComponent(String(participantId))}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Participant detail failed");
+    }
+    return response.json();
+  },
 };

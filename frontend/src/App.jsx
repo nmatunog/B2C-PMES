@@ -14,6 +14,7 @@ import {
   Check,
   CheckCircle2,
   Coins,
+  Eye,
   FileText,
   IdCard,
   House,
@@ -24,6 +25,7 @@ import {
   MapPin,
   Phone,
   Printer,
+  Search,
   ShieldAlert,
   Sparkles,
   User,
@@ -64,6 +66,7 @@ import { resolveMemberPortalAccess } from "./lib/membershipAccess.js";
 const VOICE = "Sadachbia";
 /** Bump when backend TTS output meaningfully changes — avoids replaying stale blob URLs from an old build. */
 const TTS_CLIENT_CACHE_BUST = "3";
+const REGISTRY_PAGE_SIZE = 50;
 
 const RESUMABLE_APP_STATES = new Set([
   "consent",
@@ -95,6 +98,35 @@ function composeFullName(first, middle, last) {
     .map((s) => String(s ?? "").trim())
     .filter(Boolean)
     .join(" ");
+}
+
+function escapeHtmlForPrint(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Opens a print dialog with the current registry rows (browser can Save as PDF). */
+function printMemberRegistryTable(rows, title = "Member registry") {
+  const w = window.open("", "_blank");
+  if (!w) return;
+  const header =
+    "<tr><th>Name</th><th>Email</th><th>Phone</th><th>DOB</th><th>Mailing address</th><th>Civil status</th><th>Member ID</th></tr>";
+  const body = (rows || [])
+    .map((r) => {
+      const x = /** @type {Record<string, unknown>} */ (r);
+      return `<tr><td>${escapeHtmlForPrint(x.fullName)}</td><td>${escapeHtmlForPrint(x.email)}</td><td>${escapeHtmlForPrint(x.phone)}</td><td>${escapeHtmlForPrint(x.dob)}</td><td>${escapeHtmlForPrint(x.mailingAddress)}</td><td>${escapeHtmlForPrint(x.civilStatus)}</td><td>${escapeHtmlForPrint(x.memberIdNo)}</td></tr>`;
+    })
+    .join("");
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${escapeHtmlForPrint(title)}</title><style>body{font-family:ui-sans-serif,system-ui,sans-serif;padding:20px;color:#0f172a;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #cbd5e1;padding:8px 10px;font-size:11px;vertical-align:top;}th{background:#f1f5f9;font-weight:700;text-align:left;}h1{font-size:18px;margin:0 0 16px;}</style></head><body><h1>${escapeHtmlForPrint(title)}</h1><table><thead>${header}</thead><tbody>${body || '<tr><td colspan="7">No rows</td></tr>'}</tbody></table></body></html>`;
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => {
+    w.print();
+    w.close();
+  };
 }
 
 /** Identity ribbon: show first + last only (no middle name). */
@@ -243,6 +275,15 @@ export default function App() {
   const [membershipLifecycle, setMembershipLifecycle] = useState(/** @type {Record<string, unknown> | null} */ (null));
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [membershipPipeline, setMembershipPipeline] = useState(/** @type {unknown[]} */ ([]));
+  /** Admin member registry (full membership submissions) */
+  const [registryRows, setRegistryRows] = useState(/** @type {unknown[]} */ ([]));
+  const [registryTotal, setRegistryTotal] = useState(0);
+  const [registryPage, setRegistryPage] = useState(1);
+  const [registrySearchInput, setRegistrySearchInput] = useState("");
+  const [registryAppliedSearch, setRegistryAppliedSearch] = useState("");
+  const [registryIncludeAll, setRegistryIncludeAll] = useState(false);
+  const [registryLoading, setRegistryLoading] = useState(false);
+  const [registryDetail, setRegistryDetail] = useState(/** @type {Record<string, unknown> | null} */ (null));
   const audioCache = useRef({});
   const inflightTts = useRef({});
   const currentAudio = useRef(null);
@@ -593,6 +634,35 @@ export default function App() {
       cancelled = true;
     };
   }, [appState, staffAccessToken]);
+
+  useEffect(() => {
+    if (appState !== "admin_dashboard" || !staffAccessToken) return;
+    let cancelled = false;
+    setRegistryLoading(true);
+    void PmesService.fetchMemberRegistry(staffAccessToken, {
+      q: registryAppliedSearch,
+      page: registryPage,
+      pageSize: REGISTRY_PAGE_SIZE,
+      includeAll: registryIncludeAll,
+    })
+      .then((data) => {
+        if (cancelled) return;
+        setRegistryRows(Array.isArray(data?.rows) ? data.rows : []);
+        setRegistryTotal(typeof data?.total === "number" ? data.total : 0);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRegistryRows([]);
+          setRegistryTotal(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRegistryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appState, staffAccessToken, registryAppliedSearch, registryIncludeAll, registryPage]);
 
   const handleLoiSubmit = async () => {
     if (!loiData.address || !loiData.occupation || !loiData.initialCapital || !loiData.agreement) {
@@ -2109,6 +2179,13 @@ export default function App() {
               type="button"
               onClick={() => {
                 setMasterList([]);
+                setRegistryRows([]);
+                setRegistryTotal(0);
+                setRegistryPage(1);
+                setRegistrySearchInput("");
+                setRegistryAppliedSearch("");
+                setRegistryIncludeAll(false);
+                setRegistryDetail(null);
                 setAdminCreds({ email: "", password: "" });
                 setStaffRole(null);
                 setStaffAccessToken(null);
@@ -2274,6 +2351,206 @@ export default function App() {
               </tbody>
             </table>
           </div>
+          <div className="border-t border-slate-200 bg-slate-50 px-6 py-10 lg:px-10">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Member registry</h2>
+                <p className="mt-1 text-sm font-medium text-slate-600">
+                  Full membership profiles stored in the database (searchable mailing address, civil status, member ID). Use
+                  Print / Save as PDF from the print dialog.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => printMemberRegistryTable(registryRows, "B2C member registry")}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-800 shadow-sm hover:bg-slate-50"
+                >
+                  <Printer className="h-4 w-4 shrink-0" aria-hidden />
+                  Print / PDF
+                </button>
+              </div>
+            </div>
+            <form
+              className="mt-6 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setRegistryPage(1);
+                setRegistryAppliedSearch(registrySearchInput.trim());
+              }}
+            >
+              <div className="min-w-0 flex-1 lg:max-w-md">
+                <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="registry-search">
+                  Search
+                </label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-3 h-5 w-5 text-slate-400" aria-hidden />
+                  <input
+                    id="registry-search"
+                    className="input-field w-full pl-11"
+                    placeholder="Name, email, phone, address, member ID…"
+                    value={registrySearchInput}
+                    onChange={(e) => setRegistrySearchInput(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3 font-black">
+                <Search className="h-4 w-4 shrink-0" aria-hidden />
+                Search
+              </button>
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300"
+                  checked={registryIncludeAll}
+                  onChange={(e) => {
+                    setRegistryIncludeAll(e.target.checked);
+                    setRegistryPage(1);
+                  }}
+                />
+                Include participants without a full profile
+              </label>
+            </form>
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full min-w-[64rem] text-left text-sm">
+                <thead className="bg-slate-100 text-xs font-bold uppercase tracking-wider text-slate-600">
+                  <tr>
+                    <th className="p-4">Member</th>
+                    <th className="p-4">Contact</th>
+                    <th className="p-4">Mailing address</th>
+                    <th className="p-4">Civil status</th>
+                    <th className="p-4">Member ID</th>
+                    <th className="p-4 text-center">Profile</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registryLoading ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center font-medium text-slate-500">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#004aad]" aria-hidden />
+                      </td>
+                    </tr>
+                  ) : registryRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center font-medium text-slate-500">
+                        No registry rows yet. Completed full profiles appear here (or enable “include all” to browse
+                        participants).
+                      </td>
+                    </tr>
+                  ) : (
+                    registryRows.map((row) => {
+                      const r = /** @type {Record<string, unknown>} */ (row);
+                      return (
+                        <tr key={String(r.participantId)} className="border-t border-slate-100">
+                          <td className="p-4 align-top">
+                            <p className="font-bold text-slate-900">{String(r.fullName ?? "—")}</p>
+                            <p className="text-xs text-slate-500">DOB: {String(r.dob ?? "—")}</p>
+                          </td>
+                          <td className="p-4 align-top">
+                            <p className="break-all text-slate-800">{String(r.email ?? "")}</p>
+                            <p className="text-slate-600">{String(r.phone ?? "—")}</p>
+                          </td>
+                          <td className="p-4 align-top text-slate-700">{String(r.mailingAddress ?? "—")}</td>
+                          <td className="p-4 align-top">{String(r.civilStatus ?? "—")}</td>
+                          <td className="p-4 align-top font-mono text-xs">{String(r.memberIdNo ?? "—")}</td>
+                          <td className="p-4 align-top text-center">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded-lg bg-[#004aad]/10 px-3 py-1.5 text-xs font-bold uppercase text-[#004aad] hover:bg-[#004aad]/20"
+                              onClick={async () => {
+                                if (!staffAccessToken) return;
+                                try {
+                                  const detail = await PmesService.fetchParticipantAdminDetail(
+                                    staffAccessToken,
+                                    String(r.participantId),
+                                  );
+                                  setRegistryDetail(detail);
+                                } catch {
+                                  setRegistryDetail(null);
+                                }
+                              }}
+                            >
+                              <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {registryTotal > REGISTRY_PAGE_SIZE ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-slate-600">
+                <span>
+                  Page {registryPage} — {registryTotal} total
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={registryPage <= 1}
+                    onClick={() => setRegistryPage((p) => Math.max(1, p - 1))}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs uppercase disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={registryPage * REGISTRY_PAGE_SIZE >= registryTotal}
+                    onClick={() => setRegistryPage((p) => p + 1)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs uppercase disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : registryTotal > 0 ? (
+              <p className="mt-3 text-sm font-medium text-slate-500">{registryTotal} member(s) in this view.</p>
+            ) : null}
+          </div>
+          {registryDetail ? (
+            <div
+              className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="registry-detail-title"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setRegistryDetail(null);
+              }}
+            >
+              <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 bg-[#004aad] px-5 py-4 text-white">
+                  <h2 id="registry-detail-title" className="text-lg font-black uppercase tracking-tight">
+                    Member profile
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setRegistryDetail(null)}
+                    className="rounded-lg bg-white/20 px-3 py-1.5 text-sm font-bold hover:bg-white/30"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="max-h-[calc(90vh-5rem)] overflow-y-auto p-5 text-sm text-slate-800">
+                  {/** @type {Record<string, unknown>} */ (registryDetail).registry ? (
+                    <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {Object.entries(/** @type {Record<string, unknown>} */ (registryDetail).registry).map(([k, v]) => (
+                        <div key={k}>
+                          <dt className="text-xs font-black uppercase text-slate-500">{k}</dt>
+                          <dd className="font-medium break-words">{v === null || v === undefined ? "—" : String(v)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                  <h3 className="mt-6 text-xs font-black uppercase tracking-wider text-slate-500">Full membership JSON</h3>
+                  <pre className="mt-2 max-h-[min(50vh,28rem)] overflow-auto rounded-xl bg-slate-50 p-3 text-xs leading-relaxed">
+                    {JSON.stringify(/** @type {Record<string, unknown>} */ (registryDetail).memberProfileSnapshot ?? {}, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="border-t border-slate-200 bg-slate-50 px-6 py-10 lg:px-10">
             <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Membership pipeline</h2>
             <p className="mt-1 text-sm font-medium text-slate-600">

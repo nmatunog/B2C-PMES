@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   NotFoundException,
+  Param,
   Patch,
   Post,
   Query,
@@ -70,5 +71,31 @@ export class PmesController {
   @UseGuards(StaffJwtGuard)
   adminParticipantMembership(@Body() dto: UpdateParticipantMembershipDto) {
     return this.pmes.updateParticipantMembership(dto);
+  }
+
+  /** Admin: searchable member registry (full members by default). */
+  @Get("admin/member-registry")
+  @UseGuards(StaffJwtGuard)
+  adminMemberRegistry(
+    @Query("q") q?: string,
+    @Query("page") pageRaw?: string,
+    @Query("pageSize") pageSizeRaw?: string,
+    @Query("includeAll") includeAllRaw?: string,
+  ) {
+    const page = pageRaw ? parseInt(pageRaw, 10) : undefined;
+    const pageSize = pageSizeRaw ? parseInt(pageSizeRaw, 10) : undefined;
+    const includeAll = includeAllRaw === "1" || includeAllRaw === "true";
+    return this.pmes.listMemberRegistry({
+      q,
+      page: Number.isFinite(page) ? page : undefined,
+      pageSize: Number.isFinite(pageSize) ? pageSize : undefined,
+      includeAll,
+    });
+  }
+
+  @Get("admin/participants/:id")
+  @UseGuards(StaffJwtGuard)
+  adminParticipantDetail(@Param("id") id: string) {
+    return this.pmes.getParticipantAdminDetail(id);
   }
 }

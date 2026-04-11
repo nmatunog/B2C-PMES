@@ -40,6 +40,12 @@ model Participant {
   fullProfileCompletedAt DateTime?
   /** Extra structured fields after board approval (JSON for flexibility) */
   fullProfileJson     String?   @db.Text
+  /** Full membership form object (same shape as client `profileJson`) for reporting and admin detail */
+  memberProfileSnapshot Json?
+  /** Denormalized from full profile for search/list (present address formatted) */
+  mailingAddress      String?   @db.Text
+  civilStatus           String?
+  memberIdNo            String?
   pmesRecords   PmesRecord[]
   loiSubmission LoiSubmission?
 }
