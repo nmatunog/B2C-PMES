@@ -41,7 +41,7 @@ export function IdentityBanner({ member, staff }) {
         </span>
       ) : (
         <span className="mt-1 inline-flex max-w-full rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600">
-          Prospect
+          Applicant
         </span>
       );
     return (
