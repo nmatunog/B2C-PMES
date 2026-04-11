@@ -82,11 +82,14 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
               <div
                 className={`mt-3 inline-flex w-fit items-center gap-1 rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider ${
                   member.status === "Founding Member"
-                    ? "border-stone-800/20 bg-stone-900 text-white"
+                    ? "border-amber-400/70 bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-900 shadow-sm ring-1 ring-amber-200/60"
                     : "border-blue-100 bg-white text-blue-700"
                 }`}
               >
-                <ShieldCheck className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+                <ShieldCheck
+                  className={`h-3 w-3 shrink-0 ${member.status === "Founding Member" ? "text-amber-600" : "text-blue-600 opacity-90"}`}
+                  aria-hidden
+                />
                 {member.status}
               </div>
             </article>
