@@ -32,7 +32,7 @@ import {
 const BYLAWS_PDF_URL = "/documents/b2c-bylaws-primary.pdf";
 
 /**
- * B2C marketing landing (Vite: static assets live in `frontend/public/`, e.g. `BaiCommunityhome.png`).
+ * B2C marketing landing (Vite: static assets in `frontend/public/`, e.g. `BaiCommunityhome.png` as a subtle full-width backdrop).
  *
  * Member access uses Firebase **Email / Password** (configured in Firebase Console). PMES progress syncs to Firestore for resume.
  *
@@ -625,10 +625,26 @@ export default function LandingPage({
       </div>
     );
 
+  /** Full-width marketplace scene as a subtle page watermark (under mesh sections). Both layers use scroll attachment for reliable mobile performance. */
+  const pageBackdropStyle = {
+    backgroundColor: "#f0ede6",
+    backgroundImage: `linear-gradient(
+      to bottom,
+      rgba(250, 249, 246, 0.88) 0%,
+      rgba(247, 245, 241, 0.85) 45%,
+      rgba(235, 232, 226, 0.9) 100%
+    ), url(${JSON.stringify(heroSrc)})`,
+    backgroundSize: "cover, cover",
+    backgroundPosition: "center top, center 35%",
+    backgroundRepeat: "no-repeat, no-repeat",
+    backgroundAttachment: "scroll, scroll",
+  };
+
   return (
     <div
       id="top"
-      className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#f6f4f0] via-[#f8f7f4] to-[#ebe8e2] pb-24 font-sans text-stone-900 sm:pb-28"
+      className="relative isolate min-h-screen overflow-x-hidden pb-24 font-sans text-stone-900 sm:pb-28"
+      style={pageBackdropStyle}
     >
       <a
         href="#main-content"
@@ -883,15 +899,6 @@ export default function LandingPage({
                 </div>
               </div>
             ) : null}
-          </div>
-          <div className="glass-hero-frame w-full max-w-5xl overflow-hidden rounded-2xl sm:rounded-3xl">
-            <img
-              src={heroSrc}
-              alt="B2C cooperative marketplace — community stalls and the B2C COOP shop"
-              className="h-auto max-h-[min(20rem,38vh)] w-full object-contain object-center sm:max-h-[min(24rem,42vh)] md:max-h-[26rem]"
-              loading="eager"
-              decoding="async"
-            />
           </div>
         </div>
       </section>
