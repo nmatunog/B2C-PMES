@@ -499,11 +499,12 @@ export default function App() {
 
       clearStaffSession();
 
-      if (import.meta.env.VITE_API_BASE_URL?.trim()) {
+      const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").trim();
+      if (apiBaseUrl) {
         const sid = u.uid;
         if (memberSyncOncePerUidRef.current !== sid) {
           memberSyncOncePerUidRef.current = sid;
-          void syncMemberToPostgres(u, u.displayName?.trim() || undefined);
+          await syncMemberToPostgres(u, u.displayName?.trim() || undefined);
         }
       }
 
@@ -519,13 +520,36 @@ export default function App() {
         setAuthReady(true);
         return;
       }
-      if (pending === "pioneer_portal") {
+
+      const pioneerIntent = pending === "pioneer_portal";
+      if (pioneerIntent) {
         pendingAfterAuthRef.current = null;
         setPmesPaused(false);
-        hydratingRef.current = false;
-        setAuthReady(true);
-        setAppState("member_pending");
-        return;
+      }
+
+      /** Imported pioneers: DB already reflects PMES / LOI / fees / board — never resume PMES from Firestore. */
+      if (apiBaseUrl && u.email) {
+        try {
+          const life = await PmesService.fetchMembershipLifecycle(u.email);
+          setMembershipLifecycle(life);
+          if (life?.isLegacyFounderImport) {
+            if (life.canAccessFullMemberPortal) {
+              setAppState("member_portal");
+            } else {
+              setAppState("member_pending");
+            }
+            hydratingRef.current = false;
+            setAuthReady(true);
+            return;
+          }
+        } catch {
+          if (pioneerIntent) {
+            setAppState("member_pending");
+            hydratingRef.current = false;
+            setAuthReady(true);
+            return;
+          }
+        }
       }
 
       try {
@@ -2500,43 +2524,61 @@ export default function App() {
 
   if (appState === "member_pending") {
     const memberDisplayName = displayNameFirstLast(formData, activeRecord?.fullName, user?.displayName);
+    const referralCodePending = user?.uid
+      ? `PIONEER-${String(user.uid).replace(/-/g, "").slice(-8).toUpperCase()}`
+      : "PIONEER-PENDING";
+    const pioneerPointsPending = pioneerReferral.successfulJoinCount * PIONEER_POINTS_PER_JOIN;
+    const showLegacyInvitePanel =
+      Boolean(membershipLifecycle?.isLegacyFounderImport) &&
+      String(membershipLifecycle?.stage || "") === "AWAITING_FULL_PROFILE";
     return (
       <>
         {identityRibbon}
         {portalHomeBar}
         <div className="flex min-h-screen flex-col items-center bg-slate-100/80 p-4 pb-24 pt-8 sm:p-8">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-          <MemberLifecyclePortal
-            lifecycle={membershipLifecycle}
-            displayName={memberDisplayName}
-            email={user?.email || ""}
-            loading={membershipLoading}
-            apiConfigured={useApiMembership}
-            clientPmesPassed={pmesExamPassed}
-            onViewCertificate={() => setAppState("certificate")}
-            onContinuePmes={() => {
-              void continuePmesFromLanding();
-            }}
-            onOpenLoi={() => {
-              setLoiData((prev) => ({
-                ...prev,
-                address: String(prev.address || "").trim() || String(formData.residenceAddress || "").trim() || "",
-              }));
-              setAppState("loi_form");
-            }}
-            onOpenPayment={() => setAppState("payment_portal")}
-            onSubmitFullProfile={async ({ profileJson, sheetFileName, notes }) => {
-              if (!user?.email) return;
-              await PmesService.submitFullProfile({
-                email: user.email,
-                profileJson,
-                sheetFileName,
-                notes: notes ?? "",
-              });
-              await refreshMembershipLifecycle();
-              setAppState("member_portal");
-            }}
-          />
+          <div className="flex w-full max-w-5xl flex-col gap-10">
+            <MemberLifecyclePortal
+              lifecycle={membershipLifecycle}
+              displayName={memberDisplayName}
+              email={user?.email || ""}
+              loading={membershipLoading}
+              apiConfigured={useApiMembership}
+              clientPmesPassed={pmesExamPassed}
+              onViewCertificate={() => setAppState("certificate")}
+              onContinuePmes={() => {
+                void continuePmesFromLanding();
+              }}
+              onOpenLoi={() => {
+                setLoiData((prev) => ({
+                  ...prev,
+                  address: String(prev.address || "").trim() || String(formData.residenceAddress || "").trim() || "",
+                }));
+                setAppState("loi_form");
+              }}
+              onOpenPayment={() => setAppState("payment_portal")}
+              onSubmitFullProfile={async ({ profileJson, sheetFileName, notes }) => {
+                if (!user?.email) return;
+                await PmesService.submitFullProfile({
+                  email: user.email,
+                  profileJson,
+                  sheetFileName,
+                  notes: notes ?? "",
+                });
+                await refreshMembershipLifecycle();
+                setAppState("member_portal");
+              }}
+            />
+            {showLegacyInvitePanel && user ? (
+              <ReferralEngine
+                memberName={memberDisplayName || "Member"}
+                referralCode={referralCodePending}
+                successfulJoinCount={pioneerReferral.successfulJoinCount}
+                pioneerPoints={pioneerPointsPending}
+                invitesThisMonth={pioneerReferral.invitesThisMonth}
+              />
+            ) : null}
+          </div>
         </div>
       </>
     );
