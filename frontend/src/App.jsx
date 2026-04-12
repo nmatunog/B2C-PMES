@@ -117,6 +117,45 @@ function escapeHtmlForPrint(text) {
     .replace(/"/g, "&quot;");
 }
 
+/** Staff JWT + role for this browser tab only (survives refresh until tab close or Logout). */
+const STAFF_SS_TOKEN = "b2c_pmes_staff_jwt";
+const STAFF_SS_ROLE = "b2c_pmes_staff_role";
+const STAFF_SS_EMAIL = "b2c_pmes_staff_email";
+
+function persistStaffSession(token, role, email) {
+  try {
+    if (!token?.trim() || !email?.trim() || (role !== "admin" && role !== "superuser")) return;
+    sessionStorage.setItem(STAFF_SS_TOKEN, token.trim());
+    sessionStorage.setItem(STAFF_SS_ROLE, role);
+    sessionStorage.setItem(STAFF_SS_EMAIL, email.trim());
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function clearStaffSession() {
+  try {
+    sessionStorage.removeItem(STAFF_SS_TOKEN);
+    sessionStorage.removeItem(STAFF_SS_ROLE);
+    sessionStorage.removeItem(STAFF_SS_EMAIL);
+  } catch {
+    /* noop */
+  }
+}
+
+/** @returns {{ token: string; role: 'admin' | 'superuser'; email: string } | null} */
+function readStaffSession() {
+  try {
+    const token = sessionStorage.getItem(STAFF_SS_TOKEN);
+    const role = sessionStorage.getItem(STAFF_SS_ROLE);
+    const email = sessionStorage.getItem(STAFF_SS_EMAIL);
+    if (!token?.trim() || !email?.trim() || (role !== "admin" && role !== "superuser")) return null;
+    return { token: token.trim(), role, email: email.trim() };
+  } catch {
+    return null;
+  }
+}
+
 /** Opens a print dialog with the current registry rows (browser can Save as PDF). */
 function printMemberRegistryTable(rows, title = "Member registry") {
   const w = window.open("", "_blank");
@@ -285,9 +324,12 @@ export default function App() {
   }
 ]`);
   const [legacyImportMsg, setLegacyImportMsg] = useState(null);
+  /** `"error"` when `legacyImportMsg` is a failure message; otherwise success / parse result. */
+  const [legacyImportMsgKind, setLegacyImportMsgKind] = useState(/** @type {"success" | "error" | null} */ (null));
   const [legacyImportLoading, setLegacyImportLoading] = useState(false);
+  const [adminToast, setAdminToast] = useState(/** @type {null | { type: "success" | "error"; message: string }} */ (null));
   const [adminCreds, setAdminCreds] = useState({ email: "", password: "" });
-  /** Staff JWT role after admin dashboard login; token kept in memory only. */
+  /** Staff JWT role after admin dashboard login; JWT also in sessionStorage for this tab (refresh-safe). */
   const [staffRole, setStaffRole] = useState(/** @type {null | "admin" | "superuser"} */ (null));
   const [staffAccessToken, setStaffAccessToken] = useState(null);
   const [managedStaffAdmins, setManagedStaffAdmins] = useState([]);
@@ -413,10 +455,44 @@ export default function App() {
         hydratingRef.current = false;
         setPmesPaused(false);
         lastFlowAppStateRef.current = null;
+        const api = (import.meta.env.VITE_API_BASE_URL || "").trim();
+        if (api) {
+          const staff = readStaffSession();
+          if (staff) {
+            try {
+              const records = await PmesService.fetchAdminRecords(staff.token);
+              setStaffAccessToken(staff.token);
+              setStaffRole(staff.role);
+              setStaffSessionEmail(staff.email);
+              setMasterList(records);
+              if (staff.role === "superuser") {
+                try {
+                  const admins = await PmesService.listStaffAdmins(staff.token);
+                  setManagedStaffAdmins(Array.isArray(admins) ? admins : []);
+                } catch {
+                  setManagedStaffAdmins([]);
+                }
+              } else {
+                setManagedStaffAdmins([]);
+              }
+              setAppState("admin_dashboard");
+              setAuthReady(true);
+              return;
+            } catch {
+              clearStaffSession();
+            }
+          }
+        }
+        setStaffAccessToken(null);
+        setStaffRole(null);
+        setStaffSessionEmail(null);
+        setManagedStaffAdmins([]);
         setAppState("landing");
         setAuthReady(true);
         return;
       }
+
+      clearStaffSession();
 
       if (import.meta.env.VITE_API_BASE_URL?.trim()) {
         const sid = u.uid;
@@ -701,6 +777,12 @@ export default function App() {
   }, [appState, membershipLifecycle]);
 
   useEffect(() => {
+    if (!adminToast) return undefined;
+    const id = setTimeout(() => setAdminToast(null), 9000);
+    return () => clearTimeout(id);
+  }, [adminToast]);
+
+  useEffect(() => {
     if (appState !== "admin_dashboard" || !staffAccessToken) return;
     let cancelled = false;
     void PmesService.fetchMembershipPipeline(staffAccessToken)
@@ -777,6 +859,7 @@ export default function App() {
     setManagedStaffAdmins([]);
     setNewStaffAdmin({ email: "", password: "" });
     setStaffAdminError(null);
+    clearStaffSession();
     setAppState("admin_login");
   };
 
@@ -795,6 +878,7 @@ export default function App() {
       setStaffRole(result.role);
       setStaffAccessToken(result.accessToken);
       setStaffSessionEmail(adminCreds.email.trim());
+      persistStaffSession(result.accessToken, result.role, adminCreds.email.trim());
       if (result.role === "superuser") {
         try {
           const admins = await PmesService.listStaffAdmins(result.accessToken);
@@ -2571,6 +2655,7 @@ export default function App() {
                 setStaffAdminError(null);
                 setDeletingMasterListId(null);
                 setDeletingPipelineParticipantId(null);
+                clearStaffSession();
                 setAppState("landing");
               }}
               className="shrink-0 rounded-xl bg-white/20 px-6 py-3 text-sm font-bold uppercase tracking-widest hover:bg-white/30"
@@ -2969,12 +3054,18 @@ export default function App() {
               <code className="rounded bg-slate-200 px-1">dob</code> are optional; missing email is synthesized from TIN when possible. Rows are stored with a full snapshot and created at{" "}
               <strong>AWAITING_FULL_PROFILE</strong>. Export Sheets as TSV and run <code className="rounded bg-slate-200 px-1">node scripts/legacy-import-tsv-to-json.mjs</code> to build JSON.
             </p>
+            <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm font-semibold text-emerald-950">
+              <strong className="font-black">Saving to the database:</strong> the box below is only your draft. Nothing is written to the server until you click{" "}
+              <span className="whitespace-nowrap font-black">Import &amp; save to database</span>. That sends one request to the API; new members are inserted into Postgres immediately (no separate Save
+              button).
+            </p>
             <textarea
               className="mt-4 w-full rounded-2xl border border-slate-200 bg-white p-4 font-mono text-xs leading-relaxed text-slate-800 shadow-inner"
               rows={10}
               value={legacyImportJson}
               onChange={(e) => setLegacyImportJson(e.target.value)}
               spellCheck={false}
+              aria-label="Legacy import JSON array"
             />
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
@@ -2982,16 +3073,34 @@ export default function App() {
                 disabled={legacyImportLoading || !staffAccessToken}
                 onClick={async () => {
                   setLegacyImportMsg(null);
+                  setLegacyImportMsgKind(null);
                   setLegacyImportLoading(true);
                   try {
                     const rows = JSON.parse(legacyImportJson);
                     if (!Array.isArray(rows)) throw new Error("JSON must be an array.");
                     const result = await PmesService.importLegacyPioneers(staffAccessToken, rows);
+                    const created = Array.isArray(result?.created) ? result.created.length : 0;
+                    const skipped = Array.isArray(result?.skipped) ? result.skipped.length : 0;
+                    const total = typeof result?.totalInput === "number" ? result.totalInput : rows.length;
                     setLegacyImportMsg(JSON.stringify(result, null, 2));
+                    setLegacyImportMsgKind("success");
+                    setAdminToast({
+                      type: "success",
+                      message: `Saved to database: ${created} new member(s) created (${total} row(s) submitted, ${skipped} skipped).`,
+                    });
                     const next = await PmesService.fetchMembershipPipeline(staffAccessToken);
                     setMembershipPipeline(Array.isArray(next) ? next : []);
+                    try {
+                      const records = await PmesService.fetchAdminRecords(staffAccessToken);
+                      setMasterList(records);
+                    } catch {
+                      /* keep existing master list */
+                    }
                   } catch (e) {
-                    setLegacyImportMsg(e instanceof Error ? e.message : String(e));
+                    const msg = e instanceof Error ? e.message : String(e);
+                    setLegacyImportMsg(msg);
+                    setLegacyImportMsgKind("error");
+                    setAdminToast({ type: "error", message: msg });
                   } finally {
                     setLegacyImportLoading(false);
                   }
@@ -2999,11 +3108,20 @@ export default function App() {
                 className="inline-flex items-center gap-2 rounded-xl bg-[#004aad] px-5 py-2.5 text-sm font-black uppercase text-white hover:bg-[#003d99] disabled:opacity-50"
               >
                 {legacyImportLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                Run import
+                Import &amp; save to database
               </button>
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Writes to API / Postgres</span>
             </div>
             {legacyImportMsg ? (
-              <pre className="mt-4 max-h-48 overflow-auto rounded-xl bg-slate-900/90 p-4 text-xs text-emerald-100">{legacyImportMsg}</pre>
+              <pre
+                className={`mt-4 max-h-48 overflow-auto rounded-xl p-4 text-xs ${
+                  legacyImportMsgKind === "error"
+                    ? "bg-red-950/95 text-red-50"
+                    : "bg-slate-900/90 text-emerald-100"
+                }`}
+              >
+                {legacyImportMsg}
+              </pre>
             ) : null}
           </div>
           <div className="border-t border-slate-200 bg-slate-50 px-6 py-10 lg:px-10">
@@ -3103,6 +3221,36 @@ export default function App() {
           </div>
         </div>
       </div>
+      {adminToast ? (
+        <div
+          className={`fixed bottom-6 right-6 z-[60] flex max-w-md items-start gap-3 rounded-2xl border-2 px-4 py-3 shadow-xl sm:max-w-lg ${
+            adminToast.type === "success"
+              ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+              : "border-red-300 bg-red-50 text-red-950"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {adminToast.type === "success" ? (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+          ) : (
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-black uppercase tracking-wide opacity-80">
+              {adminToast.type === "success" ? "Saved" : "Error"}
+            </p>
+            <p className="mt-1 text-sm font-semibold leading-snug">{adminToast.message}</p>
+          </div>
+          <button
+            type="button"
+            className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold uppercase text-slate-600 hover:bg-black/5"
+            onClick={() => setAdminToast(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       </>
     );
 

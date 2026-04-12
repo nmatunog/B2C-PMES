@@ -151,6 +151,19 @@ export const PmesService = {
     throw new Error("Staff dashboard requires VITE_API_BASE_URL and the Nest API with a database superuser (npm run create-superuser).");
   },
 
+  /** Reload PMES master list using an existing staff JWT (e.g. after page refresh). */
+  async fetchAdminRecords(accessToken) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/pmes/admin/records`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Master list failed");
+    }
+    const records = await response.json();
+    return Array.isArray(records) ? records : [];
+  },
+
   /**
    * Superuser only: remove a PMES master list row (PmesRecord). Does not delete the participant.
    */
