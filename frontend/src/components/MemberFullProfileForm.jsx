@@ -450,6 +450,16 @@ export function MemberFullProfileForm({
     });
   }, [assignedCallsign]);
 
+  /** Default contact email from the signed-in account when the field is still empty. */
+  useEffect(() => {
+    const e = String(memberEmail ?? "").trim();
+    if (!e) return;
+    setProfile((p) => {
+      if (String(p.contact.emailAddress ?? "").trim()) return p;
+      return { ...p, contact: { ...p.contact, emailAddress: e } };
+    });
+  }, [memberEmail]);
+
   /** One-time merge from PostgreSQL registration row + optional Firebase display name. */
   useEffect(() => {
     const rawName =
@@ -733,6 +743,17 @@ export function MemberFullProfileForm({
           )}
         </div>
         <div className="sm:col-span-2 space-y-2">
+          <Text
+            label="Email address"
+            type="email"
+            value={ct.emailAddress}
+            onChange={(v) => setContact({ emailAddress: v })}
+            required
+          />
+          <p className="text-xs font-medium leading-snug text-slate-500">
+            Cooperative notices and account recovery use this address. It defaults to your sign-in email; change it here if you
+            prefer a different one.
+          </p>
           <Text label="Callsign (optional)" value={pr.callsign} onChange={(v) => setPersonal({ callsign: v })} />
           <p className="text-xs font-medium leading-snug text-slate-500">
             Shown as your <span className="font-semibold text-slate-700">alternate label</span> alongside your Member ID. If
@@ -1028,7 +1049,6 @@ export function MemberFullProfileForm({
         <Text label="Mobile No." value={ct.mobileNo} onChange={(v) => setContact({ mobileNo: v })} required />
         <Text label="Office phone area code" value={ct.officePhoneAreaCode} onChange={(v) => setContact({ officePhoneAreaCode: v })} />
         <Text label="Office phone No." value={ct.officePhoneNo} onChange={(v) => setContact({ officePhoneNo: v })} />
-        <Text label="Email address" value={ct.emailAddress} onChange={(v) => setContact({ emailAddress: v })} />
       </Section>
 
       <Section title="Registration numbers (no expiry)">
