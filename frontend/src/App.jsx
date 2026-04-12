@@ -1623,8 +1623,7 @@ export default function App() {
               <div>
                 <h1 className="text-2xl font-black uppercase tracking-tight text-[#004aad]">Founding pioneer</h1>
                 <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">
-                  If you were on the roster before this app, confirm the email and birth date we have on file. The server matches
-                  your birth date as <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span> (ISO). Then use{" "}
+                  If you were on the roster before this app, confirm the email and the birth date stored for your row. Then use{" "}
                   <strong>that same email</strong> to sign in or create your account so your digital membership form opens.
                 </p>
               </div>
@@ -1669,13 +1668,19 @@ export default function App() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="pioneer-dob">
-                      Date of birth
+                      Date of birth (must match our database)
                     </label>
+                    <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2.5 text-xs font-medium leading-relaxed text-amber-950">
+                      <strong className="font-black">Roster spreadsheet had no Date of Birth column?</strong> Imports without a{" "}
+                      <code className="rounded bg-white/80 px-1">dob</code> field use the placeholder{" "}
+                      <span className="font-mono font-bold">1900-01-01</span>. Choose{" "}
+                      <span className="font-mono font-bold">January 1, 1900</span> in the calendar below (we verify as ISO{" "}
+                      <span className="font-mono">1900-01-01</span>). Enter your real birthday later in the full membership form.
+                    </div>
                     <p className="mb-2 text-xs font-medium leading-relaxed text-slate-600">
-                      Use the calendar to pick your birth date. Your browser may show another <em>display</em> style (e.g.{" "}
-                      08/23/1967) — that is normal. We still verify the same calendar day as{" "}
-                      <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span> in the roster (e.g.{" "}
-                      <span className="font-mono">1967-08-23</span>).
+                      If the office already saved your real DOB for your row, pick that date. The browser may show another{" "}
+                      <em>display</em> style; we still match the same calendar day as{" "}
+                      <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span> in the roster.
                     </p>
                     <input
                       id="pioneer-dob"
@@ -1693,9 +1698,8 @@ export default function App() {
                       </p>
                     ) : null}
                     <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium leading-relaxed text-slate-700">
-                      <strong className="text-slate-900">No birth date on the import?</strong> We may have stored the placeholder{" "}
-                      <span className="font-mono font-bold">1900-01-01</span>. Enter that here to verify, then put your real date
-                      of birth in the full membership form.
+                      Staff can correct your DOB in the member record later; until then, use whatever date is stored for your row
+                      (often <span className="font-mono font-bold">1900-01-01</span> when the sheet had no DOB).
                     </p>
                   </div>
                   {pioneerReclaimError ? (
@@ -1762,9 +1766,9 @@ export default function App() {
                 ) : null}
                 {pioneerReclaimEligible === false ? (
                   <p className="text-sm font-medium leading-relaxed text-slate-600">
-                    We couldn&apos;t match a pioneer row that still needs a profile. Check the email, try DOB as{" "}
-                    <span className="font-mono font-bold">YYYY-MM-DD</span>, or if your import had no DOB try{" "}
-                    <span className="font-mono font-bold">1900-01-01</span>. Contact the cooperative office if needed. If you
+                    We couldn&apos;t match a pioneer row that still needs a profile. Check the email. If the roster had{" "}
+                    <strong>no Date of Birth column</strong>, try <span className="font-mono font-bold">1900-01-01</span> (January
+                    1, 1900). Otherwise use the ISO date we have on file. Contact the cooperative office if needed. If you
                     already finished the digital form, you won&apos;t see a match here.
                   </p>
                 ) : null}
@@ -3068,7 +3072,9 @@ export default function App() {
               <code className="rounded bg-slate-200 px-1">civilStatus</code>, address fields, <code className="rounded bg-slate-200 px-1">tinNo</code>, share amounts,{" "}
               <code className="rounded bg-slate-200 px-1">religion</code>, optional <code className="rounded bg-slate-200 px-1">sheet</code> for extra columns).{" "}
               <code className="rounded bg-slate-200 px-1">email</code>, <code className="rounded bg-slate-200 px-1">phone</code>, and{" "}
-              <code className="rounded bg-slate-200 px-1">dob</code> are optional; missing email is synthesized from TIN when possible. Rows are stored with a full snapshot and created at{" "}
+              <code className="rounded bg-slate-200 px-1">dob</code> are optional; missing email is synthesized from TIN when possible.{" "}
+              <strong>No DOB column in the sheet?</strong> Omit <code className="rounded bg-slate-200 px-1">dob</code> — the API stores{" "}
+              <code className="rounded bg-slate-200 px-1">1900-01-01</code> so pioneers can reclaim with that date until staff updates the record. Rows are stored with a full snapshot and created at{" "}
               <strong>AWAITING_FULL_PROFILE</strong>. Export Sheets as TSV and run <code className="rounded bg-slate-200 px-1">node scripts/legacy-import-tsv-to-json.mjs</code> to build JSON.
             </p>
             <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm font-semibold text-emerald-950">
