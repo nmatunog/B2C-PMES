@@ -214,6 +214,8 @@ export function createEmptyMemberProfile() {
     signature: {
       memberSignatureOverPrintedName: "",
       date: "",
+      /** Optional `data:image/jpeg;base64,...` from uploaded signature scan (client-compressed). */
+      memberSignatureImageDataUrl: "",
     },
     internalNotes: "",
   };

@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { FileSpreadsheet, Loader2, Lock } from "lucide-react";
+import { FileSpreadsheet, Loader2, Lock, Upload, X } from "lucide-react";
 import { B2CLogo } from "./B2CLogo.jsx";
 import { createEmptyMemberProfile } from "../lib/memberFullProfileSchema.js";
 import {
@@ -30,6 +30,7 @@ import {
   splitFullNameForPrefill,
 } from "../lib/membershipFormPrefill.js";
 import { profileToCsvString } from "../lib/memberProfileFlatten.js";
+import { compressImageFileToJpegDataUrl } from "../lib/signatureImage.js";
 import { auth } from "../services/firebase";
 import { PmesService } from "../services/pmesService";
 
@@ -382,6 +383,9 @@ export function MemberFullProfileForm({
 }) {
   const [profile, setProfile] = useState(() => createEmptyMemberProfile());
   const [sheetFile, setSheetFile] = useState(/** @type {File | null} */ (null));
+  const signatureFileInputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
+  const [signatureImageBusy, setSignatureImageBusy] = useState(false);
+  const [signatureImageError, setSignatureImageError] = useState(/** @type {string | null} */ (null));
   const [callsignMsg, setCallsignMsg] = useState(/** @type {string | null} */ (null));
   /** Lazy-loaded PSGC helpers (keeps initial bundle small). */
   const [phGeo, setPhGeo] = useState(
@@ -1239,6 +1243,81 @@ export function MemberFullProfileForm({
           onChange={(v) => setSig({ memberSignatureOverPrintedName: v })}
         />
         <Text label="Date" value={sg.date} onChange={(v) => setSig({ date: v })} />
+        <div className="sm:col-span-2 space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+            Signature image <span className="font-medium normal-case text-slate-500">(optional — photo or scan of your ink signature)</span>
+          </p>
+          <div className="flex flex-wrap items-start gap-3">
+            <input
+              ref={signatureFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/*"
+              className="sr-only"
+              id="member-signature-image-input"
+              disabled={signatureImageBusy}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                setSignatureImageError(null);
+                setSignatureImageBusy(true);
+                try {
+                  const dataUrl = await compressImageFileToJpegDataUrl(file);
+                  setSig({ memberSignatureImageDataUrl: dataUrl });
+                } catch (err) {
+                  setSignatureImageError(err instanceof Error ? err.message : "Could not use that image.");
+                } finally {
+                  setSignatureImageBusy(false);
+                }
+              }}
+            />
+            <label
+              htmlFor="member-signature-image-input"
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#004aad]/40 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-[#004aad] shadow-sm hover:bg-[#004aad]/5 ${
+                signatureImageBusy ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              {signatureImageBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Upload className="h-4 w-4" aria-hidden />
+              )}
+              Upload image
+            </label>
+            {sg.memberSignatureImageDataUrl ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setSig({ memberSignatureImageDataUrl: "" });
+                  setSignatureImageError(null);
+                }}
+              >
+                <X className="h-4 w-4" aria-hidden />
+                Remove
+              </button>
+            ) : null}
+          </div>
+          {signatureImageError ? (
+            <p className="text-xs font-semibold text-red-600" role="alert">
+              {signatureImageError}
+            </p>
+          ) : null}
+          {sg.memberSignatureImageDataUrl ? (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Preview</p>
+              <img
+                src={sg.memberSignatureImageDataUrl}
+                alt="Uploaded signature preview"
+                className="max-h-28 max-w-full object-contain object-left"
+              />
+            </div>
+          ) : (
+            <p className="text-xs font-medium text-slate-500">
+              You can type your name above, upload a photo of your signature, or both.
+            </p>
+          )}
+        </div>
         <TextArea
           label="Notes for membership desk"
           value={profile.internalNotes}
