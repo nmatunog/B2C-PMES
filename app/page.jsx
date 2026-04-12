@@ -1,0 +1,134 @@
+"use client";
+
+import { useState } from "react";
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+
+function getFirebaseApp() {
+  const config = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
+  if (!config.apiKey || !config.projectId) {
+    return null;
+  }
+  return getApps().length ? getApps()[0] : initializeApp(config);
+}
+
+export default function Home() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [status, setStatus] = useState("");
+
+  const firebaseReady = Boolean(
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  );
+
+  /**
+   * Runs after Firebase Email/Password sign-up succeeds: persists uid/email/fullName to Neon via Edge API.
+   */
+  async function handleAuth(userCredential) {
+    const user = userCredential.user;
+    const token = await user.getIdToken();
+    const res = await fetch("/api/sync-member", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        uid: user.uid,
+        email: user.email ?? "",
+        fullName: fullName.trim(),
+      }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(text || `Sync failed (${res.status})`);
+    }
+    setStatus("Signed up and synced to Postgres.");
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    setStatus("");
+    const app = getFirebaseApp();
+    if (!app) {
+      setStatus("Set NEXT_PUBLIC_FIREBASE_* env vars (see frontend/.env.example naming).");
+      return;
+    }
+    try {
+      const auth = getAuth(app);
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await handleAuth(cred);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Sign-up or sync failed");
+    }
+  }
+
+  return (
+    <main style={{ padding: "2rem", maxWidth: "40rem", fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ fontSize: "1.25rem", fontWeight: 800 }}>B2C PMES — Next.js (Edge API)</h1>
+      <p style={{ marginTop: "1rem", lineHeight: 1.5 }}>
+        Member UI for production lives in <code>frontend/</code>. This page demonstrates Firebase sign-up +{" "}
+        <code>POST /api/sync-member</code> (Neon <code>Participant</code> row per CURSOR_DOCS.md).
+      </p>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2 style={{ fontSize: "1rem", fontWeight: 700 }}>Demo sign-up → sync</h2>
+        {!firebaseReady ? (
+          <p style={{ color: "#b45309" }}>
+            Configure <code>NEXT_PUBLIC_FIREBASE_*</code> in <code>.env.local</code> (same values as{" "}
+            <code>frontend/.env</code> but with the <code>NEXT_PUBLIC_</code> prefix).
+          </p>
+        ) : null}
+        <form onSubmit={onSubmit} style={{ display: "grid", gap: "0.75rem", marginTop: "0.75rem", maxWidth: "22rem" }}>
+          <label>
+            Full name
+            <input
+              style={{ display: "block", width: "100%", marginTop: "0.25rem" }}
+              value={fullName}
+              onChange={(ev) => setFullName(ev.target.value)}
+              autoComplete="name"
+              required
+            />
+          </label>
+          <label>
+            Email
+            <input
+              type="email"
+              style={{ display: "block", width: "100%", marginTop: "0.25rem" }}
+              value={email}
+              onChange={(ev) => setEmail(ev.target.value)}
+              autoComplete="email"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              style={{ display: "block", width: "100%", marginTop: "0.25rem" }}
+              value={password}
+              onChange={(ev) => setPassword(ev.target.value)}
+              autoComplete="new-password"
+              required
+              minLength={6}
+            />
+          </label>
+          <button type="submit">Sign up &amp; sync member</button>
+        </form>
+        {status ? (
+          <p style={{ marginTop: "1rem", whiteSpace: "pre-wrap" }} role="status">
+            {status}
+          </p>
+        ) : null}
+      </section>
+    </main>
+  );
+}
