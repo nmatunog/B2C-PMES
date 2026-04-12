@@ -22,12 +22,6 @@ import {
   YES_NO_NA_OPTIONS,
 } from "../lib/memberFullProfileFieldOptions.js";
 import { profileToCsvString } from "../lib/memberProfileFlatten.js";
-import {
-  formatPlaceOfBirth,
-  getMunicipalitySelectOptions,
-  getProvinceSelectOptions,
-  parseLegacyPlaceOfBirth,
-} from "../lib/phPlaceOfBirth.js";
 import { auth } from "../services/firebase";
 import { PmesService } from "../services/pmesService";
 
@@ -146,6 +140,25 @@ export function MemberFullProfileForm({
   const [profile, setProfile] = useState(() => createEmptyMemberProfile());
   const [sheetFile, setSheetFile] = useState(/** @type {File | null} */ (null));
   const [callsignMsg, setCallsignMsg] = useState(/** @type {string | null} */ (null));
+  /** Lazy-loaded PSGC helpers (keeps initial bundle small). */
+  const [phGeo, setPhGeo] = useState(
+    /** @type {null | typeof import("../lib/phPlaceOfBirth.js")} */ (null),
+  );
+  const [phGeoLoadFailed, setPhGeoLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    import("../lib/phPlaceOfBirth.js")
+      .then((m) => {
+        if (!cancelled) setPhGeo(m);
+      })
+      .catch(() => {
+        if (!cancelled) setPhGeoLoadFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const id = String(assignedMemberId ?? "").trim();
@@ -194,10 +207,14 @@ export function MemberFullProfileForm({
     });
   }, [assignedCallsign]);
 
-  const phProvinceOptions = useMemo(() => getProvinceSelectOptions(), []);
+  const phProvinceOptions = useMemo(
+    () => (phGeo ? phGeo.getProvinceSelectOptions() : []),
+    [phGeo],
+  );
   const phMunicipalityOptions = useMemo(
-    () => getMunicipalitySelectOptions(profile.personal.placeOfBirthProvCode),
-    [profile.personal.placeOfBirthProvCode],
+    () =>
+      phGeo ? phGeo.getMunicipalitySelectOptions(profile.personal.placeOfBirthProvCode) : [],
+    [phGeo, profile.personal.placeOfBirthProvCode],
   );
 
   const csvBlobUrl = useMemo(() => {
@@ -223,13 +240,14 @@ export function MemberFullProfileForm({
 
   /** Hydrate PSGC dropdowns from legacy free-text placeOfBirth when codes are empty. */
   useEffect(() => {
+    if (!phGeo) return;
     setProfile((p) => {
       const pr = p.personal;
       const hasBoth =
         String(pr.placeOfBirthProvCode ?? "").trim() !== "" &&
         String(pr.placeOfBirthMunCity ?? "").trim() !== "";
       if (hasBoth) return p;
-      const parsed = parseLegacyPlaceOfBirth(pr.placeOfBirth);
+      const parsed = phGeo.parseLegacyPlaceOfBirth(pr.placeOfBirth);
       if (!parsed) return p;
       return {
         ...p,
@@ -237,11 +255,11 @@ export function MemberFullProfileForm({
           ...pr,
           placeOfBirthProvCode: parsed.provCode,
           placeOfBirthMunCity: parsed.munCity,
-          placeOfBirth: formatPlaceOfBirth(parsed.provCode, parsed.munCity),
+          placeOfBirth: phGeo.formatPlaceOfBirth(parsed.provCode, parsed.munCity),
         },
       };
     });
-  }, [profile.personal.placeOfBirth]);
+  }, [profile.personal.placeOfBirth, phGeo]);
   const setMother = (patch) => setProfile((p) => ({ ...p, mother: { ...p.mother, ...patch } }));
   const setFather = (patch) => setProfile((p) => ({ ...p, father: { ...p.father, ...patch } }));
   const setPresent = (patch) => setProfile((p) => ({ ...p, presentAddress: { ...p.presentAddress, ...patch } }));
@@ -274,6 +292,9 @@ export function MemberFullProfileForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!profile.acknowledgement.consentToDataProcessing) {
+      return;
+    }
+    if (!phGeo || phGeoLoadFailed) {
       return;
     }
     const merged = {
@@ -469,33 +490,46 @@ export function MemberFullProfileForm({
         />
         <Text label="Nickname" value={pr.nickname} onChange={(v) => setPersonal({ nickname: v })} />
         <Text label="Birth date (mm/dd/yyyy)" value={pr.birthDate} onChange={(v) => setPersonal({ birthDate: v })} required />
-        <Select
-          label="Province (place of birth)"
-          value={pr.placeOfBirthProvCode}
-          onChange={(v) =>
-            setPersonal({
-              placeOfBirthProvCode: v,
-              placeOfBirthMunCity: "",
-              placeOfBirth: "",
-            })
-          }
-          options={phProvinceOptions}
-          required
-          placeholder="Select province"
-        />
-        <Select
-          label="City / municipality"
-          value={pr.placeOfBirthMunCity}
-          onChange={(v) =>
-            setPersonal({
-              placeOfBirthMunCity: v,
-              placeOfBirth: formatPlaceOfBirth(pr.placeOfBirthProvCode, v),
-            })
-          }
-          options={phMunicipalityOptions}
-          required
-          placeholder={pr.placeOfBirthProvCode ? "Select city or municipality" : "Select province first"}
-        />
+        {phGeoLoadFailed ? (
+          <p className="text-sm font-medium text-red-700 sm:col-span-2">
+            Place-of-birth lists could not be loaded. Check your connection and refresh the page.
+          </p>
+        ) : !phGeo ? (
+          <div className="flex items-center gap-2 py-2 sm:col-span-2">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#004aad]" aria-hidden />
+            <span className="text-sm font-medium text-slate-600">Loading Philippine place-of-birth lists…</span>
+          </div>
+        ) : (
+          <>
+            <Select
+              label="Province (place of birth)"
+              value={pr.placeOfBirthProvCode}
+              onChange={(v) =>
+                setPersonal({
+                  placeOfBirthProvCode: v,
+                  placeOfBirthMunCity: "",
+                  placeOfBirth: "",
+                })
+              }
+              options={phProvinceOptions}
+              required
+              placeholder="Select province"
+            />
+            <Select
+              label="City / municipality"
+              value={pr.placeOfBirthMunCity}
+              onChange={(v) =>
+                setPersonal({
+                  placeOfBirthMunCity: v,
+                  placeOfBirth: phGeo.formatPlaceOfBirth(pr.placeOfBirthProvCode, v),
+                })
+              }
+              options={phMunicipalityOptions}
+              required
+              placeholder={pr.placeOfBirthProvCode ? "Select city or municipality" : "Select province first"}
+            />
+          </>
+        )}
         <Select
           label="Country of birth"
           value={pr.countryOfBirth}
@@ -896,7 +930,12 @@ export function MemberFullProfileForm({
 
       <button
         type="submit"
-        disabled={submitting || !profile.acknowledgement.consentToDataProcessing}
+        disabled={
+          submitting ||
+          !profile.acknowledgement.consentToDataProcessing ||
+          !phGeo ||
+          phGeoLoadFailed
+        }
         className="btn-primary flex w-full items-center justify-center gap-2 py-4 sm:w-auto"
       >
         {submitting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Lock className="h-5 w-5" aria-hidden />}
