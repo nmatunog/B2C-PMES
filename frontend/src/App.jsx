@@ -2746,24 +2746,32 @@ export default function App() {
                     }
                     setMemberLoginEmailBusy(true);
                     try {
-                      const token = await user.getIdToken();
+                      /** Force refresh so the API always gets a valid Bearer (avoids stale-session errors). */
+                      const token = await user.getIdToken(true);
                       /** @type {{ newLoginEmail?: string; loginEmailUpdated?: boolean }} */
                       const out = await PmesService.patchMemberLoginEmail({
                         email: cur,
                         newEmail: n,
                         idToken: token,
                       });
-                      if (out?.loginEmailUpdated && auth.currentUser) {
-                        await reload(auth.currentUser);
-                        await auth.currentUser.getIdToken(true);
-                      }
                       const nextEmail = typeof out?.newLoginEmail === "string" ? out.newLoginEmail.trim() : n;
                       setFormData((prev) => ({ ...prev, email: nextEmail }));
                       setRetrievalData((prev) => ({ ...prev, email: nextEmail }));
                       setMemberLoginEmailNew("");
                       setMemberLoginEmailConfirm("");
-                      setMemberLoginEmailSuccess("Sign-in email updated. Use this address the next time you log in.");
                       void refreshMembershipLifecycle();
+                      let successMsg = "Sign-in email updated. Use this address the next time you log in.";
+                      if (out?.loginEmailUpdated && auth.currentUser) {
+                        try {
+                          await auth.currentUser.getIdToken(true);
+                          await reload(auth.currentUser);
+                          await auth.currentUser.getIdToken(true);
+                        } catch {
+                          successMsg =
+                            "Sign-in email was saved on the server. If the header still shows an old address, sign out and sign in once.";
+                        }
+                      }
+                      setMemberLoginEmailSuccess(successMsg);
                     } catch (e) {
                       setMemberLoginEmailError(e instanceof Error ? e.message : "Could not update sign-in email.");
                     } finally {
@@ -2904,8 +2912,13 @@ export default function App() {
                   signal: abortSignal,
                 });
                 if (submitResult?.loginEmailUpdated && auth.currentUser) {
-                  await reload(auth.currentUser);
-                  await auth.currentUser.getIdToken(true);
+                  try {
+                    await auth.currentUser.getIdToken(true);
+                    await reload(auth.currentUser);
+                    await auth.currentUser.getIdToken(true);
+                  } catch {
+                    /* Email may already be updated server-side; user can sign out/in if UI is stale */
+                  }
                 }
                 const row = await refreshMembershipLifecycle();
                 const r = row && typeof row === "object" ? /** @type {Record<string, unknown>} */ (row) : {};
