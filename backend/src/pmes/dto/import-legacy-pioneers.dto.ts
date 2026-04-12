@@ -11,9 +11,10 @@ import {
 } from "class-validator";
 
 /**
- * Legacy / B2C registry import. Core identity can come from `fullName` or from
- * lastName + firstName (+ middleName) as in the cooperative spreadsheet.
- * Optional `sheet` holds any extra columns (passthrough) for audit.
+ * Legacy / B2C registry import. The usual spreadsheet shape is **three name columns** —
+ * `lastName`, `firstName`, `middleName` — not a single full-name cell. Optional `fullName`
+ * overrides when a row already has a combined string. Optional `sheet` holds extra columns
+ * (passthrough) for audit.
  */
 export class ImportLegacyPioneerRowDto {
   @IsOptional()

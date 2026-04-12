@@ -76,6 +76,11 @@ function normalizeTinDigits(raw: string | undefined): string {
   return d;
 }
 
+/**
+ * Single `Participant.fullName` from import row. Prefer explicit `fullName` when the sheet has it.
+ * Otherwise join **firstName**, **middleName**, **lastName** (given-name-first order for one string),
+ * even though roster columns are often listed Last / First / Middle.
+ */
 function composeLegacyFullName(row: ImportLegacyPioneerRowDto): string | null {
   const direct = row.fullName?.trim();
   if (direct) return direct;
@@ -681,9 +686,9 @@ export class PmesService {
 
   /**
    * Admin: bulk-create participants positioned at AWAITING_FULL_PROFILE (PMES passed, LOI/fees/board satisfied).
-   * Accepts full B2C registry columns (names split, address, TIN, amounts, religion, `sheet` passthrough) plus
-   * optional email/phone/dob — missing email is synthesized from TIN or a stable placeholder; missing dob uses
-   * a placeholder until staff updates the row for reclaim.
+   * Accepts B2C registry columns: typically **`lastName` / `firstName` / `middleName`** (not a single `fullName`),
+   * plus address, TIN, amounts, religion, `sheet` passthrough — optional email/phone/dob; missing email is
+   * synthesized from TIN or a stable placeholder; missing dob uses a placeholder until staff updates for reclaim.
    */
   async importLegacyPioneers(rows: ImportLegacyPioneerRowDto[]) {
     const created: string[] = [];
