@@ -2654,7 +2654,14 @@ export default function App() {
                       <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/90">
                         <td className="p-4 align-top lg:p-5">
                           <p className="font-black text-slate-900">{item.fullName}</p>
-                          <p className="text-xs text-slate-500">DOB: {item.dob || "—"}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <p className="text-xs text-slate-500">DOB: {item.dob || "—"}</p>
+                            {item.legacyPioneerImport ? (
+                              <span className="inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-900">
+                                Founder import
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="p-4 align-top text-slate-600 lg:p-5">
                           <p className="break-all">{item.email}</p>

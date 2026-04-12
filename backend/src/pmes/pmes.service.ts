@@ -117,7 +117,35 @@ export class PmesService {
     return this.flattenRecord(participant, record);
   }
 
+  /**
+   * Master list is driven by `PmesRecord` rows. Legacy founder imports normally create a passing
+   * attempt, but older or hand-edited data can leave `legacyPioneerImport` participants with no
+   * PMES row — they would be invisible here. Backfill one passing record so they appear like imports.
+   */
+  private async ensurePmesRowsForLegacyFoundersWithoutAttempt() {
+    const orphans = await this.prisma.participant.findMany({
+      where: {
+        legacyPioneerImport: true,
+        pmesRecords: { none: {} },
+      },
+      select: { id: true },
+    });
+    if (orphans.length === 0) return;
+    await this.prisma.$transaction(
+      orphans.map((p) =>
+        this.prisma.pmesRecord.create({
+          data: {
+            participantId: p.id,
+            score: 10,
+            passed: true,
+          },
+        }),
+      ),
+    );
+  }
+
   async listAllPmesForAdmin() {
+    await this.ensurePmesRowsForLegacyFoundersWithoutAttempt();
     const rows = await this.prisma.pmesRecord.findMany({
       include: { participant: true },
       orderBy: { timestamp: "desc" },
@@ -131,6 +159,7 @@ export class PmesService {
       phone: participant.phone,
       dob: participant.dob,
       gender: participant.gender,
+      legacyPioneerImport: participant.legacyPioneerImport,
       timestamp: timestamp.toISOString(),
     }));
   }
