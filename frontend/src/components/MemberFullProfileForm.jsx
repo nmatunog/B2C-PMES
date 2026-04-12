@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { FileSpreadsheet, Loader2, Lock, Upload, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileSpreadsheet, Info, Loader2, Lock, Upload, X } from "lucide-react";
 import { B2CLogo } from "./B2CLogo.jsx";
 import { SignatureDrawPad } from "./SignatureDrawPad.jsx";
 import { createEmptyMemberProfile } from "../lib/memberFullProfileSchema.js";
@@ -45,6 +45,56 @@ import { PmesService } from "../services/pmesService";
 const OFFICIAL_COOPERATIVE_ADDRESS =
   "Block 1 Lot 2D G Ouano Street, Umapad, Mandaue City, Cebu Philippines";
 const OFFICIAL_COOPERATIVE_EMAIL = "b2ccoop@gmail.com";
+
+const SUBMIT_TIMEOUT_MS = 120_000;
+
+/** @param {unknown} err */
+function formatSubmitError(err) {
+  if (err && typeof err === "object" && "name" in err && err.name === "AbortError") {
+    return "The request timed out or was cancelled. Check your connection and try again.";
+  }
+  if (err instanceof TypeError && /fetch|network|load failed/i.test(String(err.message))) {
+    return "Network error — you may be offline or the server is unreachable. Check your connection and try again.";
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return "Submission failed.";
+}
+
+/**
+ * @param {{ type: "success" | "error" | "info"; title: string; message: string }} t
+ */
+function FormToast({ toast, onDismiss }) {
+  if (!toast) return null;
+  const styles =
+    toast.type === "success"
+      ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+      : toast.type === "error"
+        ? "border-red-300 bg-red-50 text-red-950"
+        : "border-[#004aad]/30 bg-[#004aad]/8 text-slate-900";
+  const Icon = toast.type === "success" ? CheckCircle2 : toast.type === "error" ? AlertCircle : Info;
+  const defaultTitle =
+    toast.type === "success" ? "Success" : toast.type === "error" ? "Could not submit" : "Working…";
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-[70] flex max-w-md items-start gap-3 rounded-2xl border-2 px-4 py-3 shadow-xl sm:max-w-lg ${styles}`}
+      role="status"
+      aria-live={toast.type === "error" ? "assertive" : "polite"}
+    >
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 opacity-90" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-black uppercase tracking-wide opacity-85">{toast.title || defaultTitle}</p>
+        <p className="mt-1 text-sm font-semibold leading-snug">{toast.message}</p>
+      </div>
+      <button
+        type="button"
+        className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold uppercase text-slate-600 hover:bg-black/5"
+        onClick={onDismiss}
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
 
 function Text({
   label,
@@ -392,6 +442,7 @@ export function MemberFullProfileForm({
   const [draftSaveBanner, setDraftSaveBanner] = useState(/** @type {null | "restored"} */ (null));
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState(/** @type {number | null} */ (null));
   const [draftImageBackupNote, setDraftImageBackupNote] = useState(false);
+  const [formToast, setFormToast] = useState(/** @type {null | { type: "success" | "error" | "info"; title: string; message: string }} */ (null));
   const draftHydratedRef = useRef(false);
   const [sheetFile, setSheetFile] = useState(/** @type {File | null} */ (null));
   const signatureFileInputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
@@ -617,6 +668,13 @@ export function MemberFullProfileForm({
     return () => window.clearTimeout(t);
   }, [draftSaveBanner]);
 
+  useEffect(() => {
+    if (!formToast) return undefined;
+    const ms = formToast.type === "info" ? 30_000 : 14_000;
+    const t = window.setTimeout(() => setFormToast(null), ms);
+    return () => window.clearTimeout(t);
+  }, [formToast]);
+
   const setAck = (patch) => setProfile((p) => ({ ...p, acknowledgement: { ...p.acknowledgement, ...patch } }));
   const setPersonal = (patch) => setProfile((p) => ({ ...p, personal: { ...p.personal, ...patch } }));
 
@@ -674,17 +732,41 @@ export function MemberFullProfileForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!profile.acknowledgement.consentToDataProcessing) {
+      setFormToast({
+        type: "error",
+        title: "Consent required",
+        message: "Please check the data processing consent box before submitting.",
+      });
       return;
     }
-    if (!phGeo || phGeoLoadFailed) {
+    if (phGeoLoadFailed) {
+      setFormToast({
+        type: "error",
+        title: "Address data unavailable",
+        message: "Location helpers failed to load. Refresh the page and try again.",
+      });
+      return;
+    }
+    if (!phGeo) {
+      setFormToast({
+        type: "info",
+        title: "Almost ready",
+        message: "Loading address data… wait a moment, then try Submit again.",
+      });
       return;
     }
     const printed = String(profile.signature?.memberSignatureOverPrintedName ?? "").trim();
     if (!printed) {
       setMemberSigPrintedNameError("Enter your full name as it should appear as signature over printed name.");
+      setFormToast({
+        type: "error",
+        title: "Signature name required",
+        message: "Enter your full name in the signature over printed name field, then submit again.",
+      });
       return;
     }
     setMemberSigPrintedNameError(null);
+
     const merged = {
       ...profile,
       cooperative: {
@@ -694,15 +776,40 @@ export function MemberFullProfileForm({
       },
       contact: { ...profile.contact, emailAddress: profile.contact.emailAddress || memberEmail || "" },
     };
-    await onSubmitSuccess({
-      profileJson: JSON.stringify(merged),
-      sheetFileName: sheetFile ? sheetFile.name : "",
-      notes: profile.internalNotes || "",
+
+    const ctrl = new AbortController();
+    const tid = window.setTimeout(() => ctrl.abort(), SUBMIT_TIMEOUT_MS);
+    setFormToast({
+      type: "info",
+      title: "Submitting…",
+      message: "Sending your membership form to the server. Please keep this page open.",
     });
-    clearMemberProfileDraft(String(memberEmail ?? "").trim());
-    setDraftSaveBanner(null);
-    setLastDraftSavedAt(null);
-    setDraftImageBackupNote(false);
+
+    try {
+      await onSubmitSuccess({
+        profileJson: JSON.stringify(merged),
+        sheetFileName: sheetFile ? sheetFile.name : "",
+        notes: profile.internalNotes || "",
+        abortSignal: ctrl.signal,
+      });
+      window.clearTimeout(tid);
+      setFormToast({
+        type: "success",
+        title: "Form received",
+        message: "Your membership form was submitted successfully. Continuing to the member portal…",
+      });
+      clearMemberProfileDraft(String(memberEmail ?? "").trim());
+      setDraftSaveBanner(null);
+      setLastDraftSavedAt(null);
+      setDraftImageBackupNote(false);
+    } catch (err) {
+      window.clearTimeout(tid);
+      setFormToast({
+        type: "error",
+        title: "Submission failed",
+        message: formatSubmitError(err),
+      });
+    }
   };
 
   const pr = profile.personal;
@@ -722,7 +829,7 @@ export function MemberFullProfileForm({
   const sg = profile.signature;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" aria-busy={submitting}>
       <p className="text-sm font-medium leading-relaxed text-slate-600">
         Complete all sections that apply. Fields marked <span className="text-red-600">*</span> match the paper form. Board
         approval checkboxes are recorded by staff; you may leave resolution references blank unless instructed.
@@ -1473,8 +1580,10 @@ export function MemberFullProfileForm({
         className="btn-primary flex w-full items-center justify-center gap-2 py-4 sm:w-auto"
       >
         {submitting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Lock className="h-5 w-5" aria-hidden />}
-        Submit membership form
+        {submitting ? "Submitting…" : "Submit membership form"}
       </button>
+
+      <FormToast toast={formToast} onDismiss={() => setFormToast(null)} />
     </form>
   );
 }

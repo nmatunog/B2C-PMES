@@ -249,12 +249,13 @@ export const PmesService = {
     return response.json();
   },
 
-  async submitFullProfile({ email, profileJson, sheetFileName, notes }) {
+  async submitFullProfile({ email, profileJson, sheetFileName, notes, signal }) {
     if (!useRest()) throw new Error("API required");
     const response = await fetch(`${apiBase()}/pmes/full-profile`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, profileJson, sheetFileName, notes }),
+      signal,
     });
     if (!response.ok) {
       throw new Error((await response.text()) || "Full profile submission failed");

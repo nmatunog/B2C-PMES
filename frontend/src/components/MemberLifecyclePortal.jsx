@@ -50,12 +50,16 @@ export function MemberLifecyclePortal({
 
   const handleFullSuccess = async (payload) => {
     setLocalError(null);
-    if (!onSubmitFullProfile) return;
+    if (!onSubmitFullProfile) {
+      throw new Error("Membership submission is not available.");
+    }
     setSubmitting(true);
     try {
       await onSubmitFullProfile(payload);
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : "Submission failed.");
+      const msg = err instanceof Error ? err.message : "Submission failed.";
+      setLocalError(msg);
+      throw err;
     } finally {
       setSubmitting(false);
     }
