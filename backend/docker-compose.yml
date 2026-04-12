@@ -1,6 +1,6 @@
-# Matches backend/.env.example — Postgres for local PMES API + Prisma.
-# Usage: docker compose up -d
-# Then: npx prisma migrate deploy && npm run dev
+# Local Postgres only — production uses Neon (see backend/.env.example).
+# From backend/:  npm run db:up
+# Then:          npx prisma migrate deploy && npm run dev
 
 services:
   postgres:
