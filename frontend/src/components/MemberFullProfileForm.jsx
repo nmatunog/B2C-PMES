@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FileSpreadsheet, Loader2, Lock, Upload, X } from "lucide-react";
 import { B2CLogo } from "./B2CLogo.jsx";
+import { SignatureDrawPad } from "./SignatureDrawPad.jsx";
 import { createEmptyMemberProfile } from "../lib/memberFullProfileSchema.js";
 import {
   BANK_ACCOUNT_TYPE_OPTIONS,
@@ -384,8 +385,10 @@ export function MemberFullProfileForm({
   const [profile, setProfile] = useState(() => createEmptyMemberProfile());
   const [sheetFile, setSheetFile] = useState(/** @type {File | null} */ (null));
   const signatureFileInputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
+  const [signaturePadReset, setSignaturePadReset] = useState(0);
   const [signatureImageBusy, setSignatureImageBusy] = useState(false);
   const [signatureImageError, setSignatureImageError] = useState(/** @type {string | null} */ (null));
+  const [memberSigPrintedNameError, setMemberSigPrintedNameError] = useState(/** @type {string | null} */ (null));
   const [callsignMsg, setCallsignMsg] = useState(/** @type {string | null} */ (null));
   /** Lazy-loaded PSGC helpers (keeps initial bundle small). */
   const [phGeo, setPhGeo] = useState(
@@ -605,6 +608,12 @@ export function MemberFullProfileForm({
     if (!phGeo || phGeoLoadFailed) {
       return;
     }
+    const printed = String(profile.signature?.memberSignatureOverPrintedName ?? "").trim();
+    if (!printed) {
+      setMemberSigPrintedNameError("Enter your full name as it should appear as signature over printed name.");
+      return;
+    }
+    setMemberSigPrintedNameError(null);
     const merged = {
       ...profile,
       cooperative: {
@@ -1240,13 +1249,35 @@ export function MemberFullProfileForm({
         <Text
           label="Signature over printed name"
           value={sg.memberSignatureOverPrintedName}
-          onChange={(v) => setSig({ memberSignatureOverPrintedName: v })}
+          onChange={(v) => {
+            setSig({ memberSignatureOverPrintedName: v });
+            setMemberSigPrintedNameError(null);
+          }}
+          required
         />
         <Text label="Date" value={sg.date} onChange={(v) => setSig({ date: v })} />
-        <div className="sm:col-span-2 space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-            Signature image <span className="font-medium normal-case text-slate-500">(optional — photo or scan of your ink signature)</span>
+        {memberSigPrintedNameError ? (
+          <p className="sm:col-span-2 text-xs font-semibold text-red-600" role="alert">
+            {memberSigPrintedNameError}
           </p>
+        ) : null}
+        <p className="sm:col-span-2 text-xs font-medium leading-relaxed text-slate-600">
+          By submitting this form, your printed name above and any signature image you add below (drawn or uploaded) serve as
+          your electronic signature on this membership application.
+        </p>
+        <div className="sm:col-span-2 space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          <SignatureDrawPad
+            disabled={submitting || signatureImageBusy}
+            resetVersion={signaturePadReset}
+            onApply={(dataUrl) => {
+              setSignatureImageError(null);
+              setSig({ memberSignatureImageDataUrl: dataUrl });
+            }}
+          />
+          <div className="border-t border-slate-200 pt-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+              Or upload a photo <span className="font-medium normal-case text-slate-500">(scan or photo of your ink signature)</span>
+            </p>
           <div className="flex flex-wrap items-start gap-3">
             <input
               ref={signatureFileInputRef}
@@ -1264,6 +1295,7 @@ export function MemberFullProfileForm({
                 try {
                   const dataUrl = await compressImageFileToJpegDataUrl(file);
                   setSig({ memberSignatureImageDataUrl: dataUrl });
+                  setSignaturePadReset((n) => n + 1);
                 } catch (err) {
                   setSignatureImageError(err instanceof Error ? err.message : "Could not use that image.");
                 } finally {
@@ -1291,6 +1323,7 @@ export function MemberFullProfileForm({
                 onClick={() => {
                   setSig({ memberSignatureImageDataUrl: "" });
                   setSignatureImageError(null);
+                  setSignaturePadReset((n) => n + 1);
                 }}
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -1305,18 +1338,19 @@ export function MemberFullProfileForm({
           ) : null}
           {sg.memberSignatureImageDataUrl ? (
             <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Preview</p>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Signature image preview</p>
               <img
                 src={sg.memberSignatureImageDataUrl}
-                alt="Uploaded signature preview"
+                alt="Signature image attached to this application"
                 className="max-h-28 max-w-full object-contain object-left"
               />
             </div>
           ) : (
             <p className="text-xs font-medium text-slate-500">
-              You can type your name above, upload a photo of your signature, or both.
+              Drawing and upload are optional; your printed name is required. Use one or both if you want an image on file.
             </p>
           )}
+          </div>
         </div>
         <TextArea
           label="Notes for membership desk"
@@ -1332,7 +1366,8 @@ export function MemberFullProfileForm({
           submitting ||
           !profile.acknowledgement.consentToDataProcessing ||
           !phGeo ||
-          phGeoLoadFailed
+          phGeoLoadFailed ||
+          !String(sg.memberSignatureOverPrintedName || "").trim()
         }
         className="btn-primary flex w-full items-center justify-center gap-2 py-4 sm:w-auto"
       >
