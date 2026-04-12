@@ -16,6 +16,7 @@ function Text({
   required,
   type = "text",
   className = "",
+  readOnly = false,
 }) {
   return (
     <label className={`block text-[10px] font-bold uppercase tracking-wider text-slate-600 ${className}`}>
@@ -23,7 +24,10 @@ function Text({
       {required ? <span className="text-red-600"> *</span> : null}
       <input
         type={type}
-        className="input-field mt-1 text-sm font-medium text-slate-900"
+        readOnly={readOnly}
+        className={`input-field mt-1 text-sm font-medium text-slate-900 ${
+          readOnly ? "cursor-default border-slate-200/90 bg-slate-50 text-slate-800" : ""
+        }`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -62,9 +66,25 @@ function Section({ title, children, defaultOpen = false }) {
 /**
  * B2C Consumer Cooperative membership form (aligned to official Board sheet).
  */
-export function MemberFullProfileForm({ memberEmail, onSubmitSuccess, submitting, localError }) {
+export function MemberFullProfileForm({
+  memberEmail,
+  /** Server-assigned public member ID (B2C-…); shown read-only when present. */
+  assignedMemberId = "",
+  onSubmitSuccess,
+  submitting,
+  localError,
+}) {
   const [profile, setProfile] = useState(() => createEmptyMemberProfile());
   const [sheetFile, setSheetFile] = useState(/** @type {File | null} */ (null));
+
+  useEffect(() => {
+    const id = String(assignedMemberId ?? "").trim();
+    if (!id) return;
+    setProfile((p) => {
+      if (p.personal.memberIdNo === id) return p;
+      return { ...p, personal: { ...p.personal, memberIdNo: id } };
+    });
+  }, [assignedMemberId]);
 
   const csvBlobUrl = useMemo(() => {
     const forExport = {
@@ -231,7 +251,24 @@ export function MemberFullProfileForm({ memberEmail, onSubmitSuccess, submitting
       </Section>
 
       <Section title="Personal information" defaultOpen>
-        <Text label="Member ID No." value={pr.memberIdNo} onChange={(v) => setPersonal({ memberIdNo: v })} />
+        <div className="sm:col-span-2">
+          <Text
+            label="Member ID No. (assigned by B2C)"
+            value={pr.memberIdNo}
+            onChange={(v) => setPersonal({ memberIdNo: v })}
+            readOnly={Boolean(String(assignedMemberId ?? "").trim())}
+          />
+          {String(assignedMemberId ?? "").trim() ? (
+            <p className="mt-1.5 text-xs font-medium leading-snug text-slate-500">
+              Your initials and birth-year cohort are in this code; the last segment is random so others cannot guess valid
+              IDs. Use this number on cooperative paperwork and when staff asks for your member ID.
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs font-medium text-slate-500">
+              Your member ID appears here automatically once the server assigns it (usually when this page loads).
+            </p>
+          )}
+        </div>
         <Text label="Last name" value={pr.lastName} onChange={(v) => setPersonal({ lastName: v })} required />
         <Text label="First name" value={pr.firstName} onChange={(v) => setPersonal({ firstName: v })} required />
         <Text label="Middle name" value={pr.middleName} onChange={(v) => setPersonal({ middleName: v })} required />

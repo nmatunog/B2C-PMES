@@ -209,6 +209,7 @@ export function MemberLifecyclePortal({
           </div>
           <MemberFullProfileForm
             memberEmail={email}
+            assignedMemberId={typeof lifecycle?.memberIdNo === "string" ? lifecycle.memberIdNo : ""}
             submitting={submitting}
             localError={localError}
             onSubmitSuccess={handleFullSuccess}

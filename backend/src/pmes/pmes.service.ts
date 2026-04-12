@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -8,7 +13,13 @@ import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import type { ImportLegacyPioneerRowDto } from "./dto/import-legacy-pioneers.dto";
 import type { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
-import { deriveFromMemberProfile, parseFullProfileEnvelope } from "./member-profile.extract";
+import { asObject, deriveFromMemberProfile, parseFullProfileEnvelope } from "./member-profile.extract";
+import {
+  buildMemberPublicId,
+  cohortYYFromDob,
+  initialsFromFirstLast,
+  initialsFromFullName,
+} from "./member-public-id";
 import type { LoiSubmission, Participant, PmesRecord } from "@prisma/client";
 
 export type MembershipStage =
@@ -337,9 +348,11 @@ export class PmesService {
         boardApproved: false,
         fullProfileCompleted: false,
         canAccessFullMemberPortal: false,
+        memberIdNo: null as string | null,
       };
     }
-    return this.toLifecyclePayload(participant);
+    const withMemberId = await this.ensureMemberPublicId(participant);
+    return this.toLifecyclePayload(withMemberId);
   }
 
   async updateParticipantMembership(dto: UpdateParticipantMembershipDto) {
@@ -375,7 +388,13 @@ export class PmesService {
 
   async submitFullProfile(dto: SubmitFullProfileDto) {
     const email = normalizeEmail(dto.email);
-    const participant = await this.prisma.participant.findUnique({ where: { email } });
+    const participant = await this.prisma.participant.findUnique({
+      where: { email },
+      include: {
+        pmesRecords: { orderBy: { timestamp: "desc" } },
+        loiSubmission: true,
+      },
+    });
     if (!participant) throw new NotFoundException("Participant not found");
     if (!participant.boardApprovedAt) {
       throw new BadRequestException("Board approval is required before submitting the full member profile.");
@@ -389,6 +408,15 @@ export class PmesService {
       parsed = JSON.parse(dto.profileJson) as unknown;
     } catch {
       throw new BadRequestException("profileJson must be valid JSON.");
+    }
+
+    const withMemberId = await this.ensureMemberPublicId(participant, parsed);
+    const root = asObject(parsed);
+    if (root && withMemberId.memberIdNo?.trim()) {
+      const personal = asObject(root.personal) ?? {};
+      personal.memberIdNo = withMemberId.memberIdNo.trim();
+      root.personal = personal;
+      parsed = root;
     }
 
     const payload = {
@@ -409,7 +437,7 @@ export class PmesService {
         memberProfileSnapshot: parsed as Prisma.InputJsonValue,
         mailingAddress: derived.mailingAddress.trim() || null,
         civilStatus: derived.civilStatus.trim() || null,
-        memberIdNo: derived.memberIdNo.trim() || null,
+        memberIdNo: withMemberId.memberIdNo?.trim() || derived.memberIdNo.trim() || null,
       },
     });
     return { success: true };
@@ -717,7 +745,59 @@ export class PmesService {
       canAccessFullMemberPortal: stage === "FULL_MEMBER",
       /** Pre-roster import: member already pledged elsewhere; digital PMES not required on this app. */
       isLegacyFounderImport: participant.legacyPioneerImport,
+      /** Assigned once by the server; format B2C-{initials}-{YY}-{suffix} (memorable + unguessable tail). */
+      memberIdNo: participant.memberIdNo,
     };
+  }
+
+  /**
+   * Assigns a public member ID when missing: `B2C-{initials}-{cohortYY}-{rand4}`.
+   * Preserves any non-empty existing value (legacy TIN, staff entry, prior assignment).
+   */
+  private async ensureMemberPublicId(
+    participant: ParticipantWithRelations,
+    profile?: unknown,
+  ): Promise<ParticipantWithRelations> {
+    if (String(participant.memberIdNo ?? "").trim()) {
+      return participant;
+    }
+
+    let initials = initialsFromFullName(participant.fullName);
+    let yy = cohortYYFromDob(participant.dob, participant.createdAt);
+
+    const root = profile ? asObject(profile) : null;
+    const personal = root ? asObject(root.personal) : null;
+    if (personal) {
+      const fn = typeof personal.firstName === "string" ? personal.firstName : "";
+      const ln = typeof personal.lastName === "string" ? personal.lastName : "";
+      if (fn.trim() && ln.trim()) {
+        initials = initialsFromFirstLast(fn, ln, participant.fullName);
+      }
+      const bd = typeof personal.birthDate === "string" ? personal.birthDate : "";
+      if (bd.trim()) {
+        yy = cohortYYFromDob(bd, participant.createdAt);
+      }
+    }
+
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const id = buildMemberPublicId(initials, yy);
+      const clash = await this.prisma.participant.findFirst({
+        where: { memberIdNo: id, id: { not: participant.id } },
+        select: { id: true },
+      });
+      if (clash) continue;
+
+      return await this.prisma.participant.update({
+        where: { id: participant.id },
+        data: { memberIdNo: id },
+        include: {
+          pmesRecords: { orderBy: { timestamp: "desc" } },
+          loiSubmission: true,
+        },
+      });
+    }
+
+    throw new InternalServerErrorException("Could not allocate a unique member ID after retries.");
   }
 
   private flattenRecord(

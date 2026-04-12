@@ -1,6 +1,7 @@
 type JsonObject = Record<string, unknown>;
 
-function asObject(x: unknown): JsonObject | null {
+/** Exported for merging server-assigned fields into profile JSON. */
+export function asObject(x: unknown): JsonObject | null {
   if (x && typeof x === "object" && !Array.isArray(x)) return x as JsonObject;
   return null;
 }
