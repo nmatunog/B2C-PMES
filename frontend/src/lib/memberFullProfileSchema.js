@@ -51,6 +51,8 @@ export function createEmptyMemberProfile() {
       maidenLastName: "",
       maidenFirstName: "",
       maidenMiddleName: "",
+      /** When true, current-address fields below are not applicable. */
+      deceased: false,
       region: "",
       province: "",
       cityMunicipality: "",
@@ -63,6 +65,8 @@ export function createEmptyMemberProfile() {
       firstName: "",
       middleName: "",
       suffix: "",
+      /** When true, current-address fields below are not applicable. */
+      deceased: false,
       region: "",
       province: "",
       cityMunicipality: "",

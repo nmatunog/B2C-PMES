@@ -104,17 +104,22 @@ function Text({
   type = "text",
   className = "",
   readOnly = false,
+  disabled = false,
 }) {
+  const locked = disabled || readOnly;
   return (
-    <label className={`block text-[10px] font-bold uppercase tracking-wider text-slate-600 ${className}`}>
+    <label
+      className={`block text-[10px] font-bold uppercase tracking-wider text-slate-600 ${disabled ? "opacity-70" : ""} ${className}`}
+    >
       {label}
       {required ? <span className="text-red-600"> *</span> : null}
       <input
         type={type}
-        readOnly={readOnly}
+        disabled={disabled}
+        readOnly={readOnly && !disabled}
         className={`input-field mt-1 text-sm font-medium text-slate-900 ${
-          readOnly ? "cursor-default border-slate-200/90 bg-slate-50 text-slate-800" : ""
-        }`}
+          locked ? "cursor-default border-slate-200/90 bg-slate-50 text-slate-800" : ""
+        } ${disabled ? "cursor-not-allowed" : ""}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -1149,19 +1154,55 @@ export function MemberFullProfileForm({
         <Text label="Mother's maiden last name" value={mo.maidenLastName} onChange={(v) => setMother({ maidenLastName: v })} required />
         <Text label="Mother's maiden first name" value={mo.maidenFirstName} onChange={(v) => setMother({ maidenFirstName: v })} required />
         <Text label="Mother's maiden middle name" value={mo.maidenMiddleName} onChange={(v) => setMother({ maidenMiddleName: v })} required />
+        <div className="sm:col-span-2 space-y-3 rounded-xl border border-slate-200 bg-slate-50/90 p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-[#004aad]">Mother&apos;s current address</p>
+          <p className="text-sm font-medium leading-relaxed text-slate-700">
+            Region, province, city/municipality, barangay, street, and postal code below refer to where she{" "}
+            <span className="font-bold text-slate-900">currently</span> resides (or last known address if that applies).
+          </p>
+          <label className="flex cursor-pointer items-start gap-3 text-sm font-bold text-slate-900">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#004aad] focus:ring-[#004aad]"
+              checked={Boolean(mo.deceased)}
+              onChange={(e) => setMother({ deceased: e.target.checked })}
+            />
+            <span>
+              Deceased <span className="font-medium text-slate-600">(address not applicable — fields below are disabled)</span>
+            </span>
+          </label>
+        </div>
         <Select
           label="Region"
           value={mo.region}
           onChange={(v) => setMother({ region: v })}
           options={PH_REGION_OPTIONS}
-          required
+          required={!mo.deceased}
           placeholder="Select region"
+          disabled={Boolean(mo.deceased)}
         />
-        <Text label="Province" value={mo.province} onChange={(v) => setMother({ province: v })} required />
-        <Text label="City / Municipality" value={mo.cityMunicipality} onChange={(v) => setMother({ cityMunicipality: v })} required />
-        <Text label="Barangay" value={mo.barangay} onChange={(v) => setMother({ barangay: v })} />
-        <Text label="No. / Street / Subdivision" value={mo.streetSubdivision} onChange={(v) => setMother({ streetSubdivision: v })} />
-        <Text label="Postal code" value={mo.postalCode} onChange={(v) => setMother({ postalCode: v })} />
+        <Text
+          label="Province"
+          value={mo.province}
+          onChange={(v) => setMother({ province: v })}
+          required={!mo.deceased}
+          disabled={Boolean(mo.deceased)}
+        />
+        <Text
+          label="City / Municipality"
+          value={mo.cityMunicipality}
+          onChange={(v) => setMother({ cityMunicipality: v })}
+          required={!mo.deceased}
+          disabled={Boolean(mo.deceased)}
+        />
+        <Text label="Barangay" value={mo.barangay} onChange={(v) => setMother({ barangay: v })} disabled={Boolean(mo.deceased)} />
+        <Text
+          label="No. / Street / Subdivision"
+          value={mo.streetSubdivision}
+          onChange={(v) => setMother({ streetSubdivision: v })}
+          disabled={Boolean(mo.deceased)}
+        />
+        <Text label="Postal code" value={mo.postalCode} onChange={(v) => setMother({ postalCode: v })} disabled={Boolean(mo.deceased)} />
       </Section>
 
       <Section title="Father's information">
@@ -1175,18 +1216,47 @@ export function MemberFullProfileForm({
           options={NAME_SUFFIX_OPTIONS}
           placeholder="None"
         />
+        <div className="sm:col-span-2 space-y-3 rounded-xl border border-slate-200 bg-slate-50/90 p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-[#004aad]">Father&apos;s current address</p>
+          <p className="text-sm font-medium leading-relaxed text-slate-700">
+            Region, province, city/municipality, barangay, street, and postal code below refer to where he{" "}
+            <span className="font-bold text-slate-900">currently</span> resides (or last known address if that applies).
+          </p>
+          <label className="flex cursor-pointer items-start gap-3 text-sm font-bold text-slate-900">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#004aad] focus:ring-[#004aad]"
+              checked={Boolean(fa.deceased)}
+              onChange={(e) => setFather({ deceased: e.target.checked })}
+            />
+            <span>
+              Deceased <span className="font-medium text-slate-600">(address not applicable — fields below are disabled)</span>
+            </span>
+          </label>
+        </div>
         <Select
           label="Region"
           value={fa.region}
           onChange={(v) => setFather({ region: v })}
           options={PH_REGION_OPTIONS}
           placeholder="Select region"
+          disabled={Boolean(fa.deceased)}
         />
-        <Text label="Province" value={fa.province} onChange={(v) => setFather({ province: v })} />
-        <Text label="City / Municipality" value={fa.cityMunicipality} onChange={(v) => setFather({ cityMunicipality: v })} />
-        <Text label="Barangay" value={fa.barangay} onChange={(v) => setFather({ barangay: v })} />
-        <Text label="No. / Street / Subdivision" value={fa.streetSubdivision} onChange={(v) => setFather({ streetSubdivision: v })} />
-        <Text label="Postal code" value={fa.postalCode} onChange={(v) => setFather({ postalCode: v })} />
+        <Text label="Province" value={fa.province} onChange={(v) => setFather({ province: v })} disabled={Boolean(fa.deceased)} />
+        <Text
+          label="City / Municipality"
+          value={fa.cityMunicipality}
+          onChange={(v) => setFather({ cityMunicipality: v })}
+          disabled={Boolean(fa.deceased)}
+        />
+        <Text label="Barangay" value={fa.barangay} onChange={(v) => setFather({ barangay: v })} disabled={Boolean(fa.deceased)} />
+        <Text
+          label="No. / Street / Subdivision"
+          value={fa.streetSubdivision}
+          onChange={(v) => setFather({ streetSubdivision: v })}
+          disabled={Boolean(fa.deceased)}
+        />
+        <Text label="Postal code" value={fa.postalCode} onChange={(v) => setFather({ postalCode: v })} disabled={Boolean(fa.deceased)} />
       </Section>
 
       <Section title="Present address">
