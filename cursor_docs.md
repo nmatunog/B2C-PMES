@@ -8,16 +8,18 @@ Use **`@cursor_docs.md`** in Cursor chat for stack-wide context.
 |--------|------|
 | **Firebase** | Member **Authentication** (email/password). Optional Firestore for PMES **resume progress** (`pmes_progress`). |
 | **Neon** | **PostgreSQL** for all cooperative data: participants, PMES records, LOI, membership lifecycle, staff users, full profiles. |
-| **NestJS API** (`backend/`) | REST API + Prisma ORM. **Never** expose `DATABASE_URL` to the browser. |
-| **Vite + React** (`frontend/`) | UI. Talks to Firebase Auth + `VITE_API_BASE_URL` → Nest only. |
+| **NestJS API** (`backend/`) | REST API + Prisma ORM (existing). **Never** expose `DATABASE_URL` to the browser. |
+| **Next.js (repo root `app/`)** | **Optional migration path:** Edge Route Handlers (`export const runtime = 'edge'`) + `@neondatabase/serverless` + `lib/db.ts` — same Postgres schema as Prisma. Deploy target: Cloudflare Pages via `@cloudflare/next-on-pages` (see Next docs). |
+| **Vite + React** (`frontend/`) | UI. Talks to Firebase Auth + `VITE_API_BASE_URL` → Nest and/or Next (same `/auth/...` paths when using rewrites). |
 
-This repo is **not** Next.js. Frontend env uses **`VITE_*`**, not `NEXT_PUBLIC_*`.
+Member UI remains **Vite**; env uses **`VITE_*`**, not `NEXT_PUBLIC_*`. The Next app at the repo root is primarily for **Edge API routes** during migration.
 
 ## Directory map
 
 - `backend/` — Nest, Prisma schema, migrations, `DATABASE_URL` / `DIRECT_URL`
 - `frontend/` — React app, `VITE_FIREBASE_*`, `VITE_API_BASE_URL`
 - `backend/prisma/schema.prisma` — source of truth for tables
+- `app/api/**`, `lib/db.ts` — Next.js Edge handlers (Neon SQL); keep schema aligned with Prisma migrations
 
 ## Neon Postgres setup
 
@@ -46,9 +48,9 @@ Local Docker Postgres: set **`DIRECT_URL` identical to `DATABASE_URL`** (see `ba
 ## Firebase ↔ Neon member sync
 
 - **Canonical API:** `POST {NEST}/auth/sync-member` with JSON `{ "uid", "email", "fullName?" }`. Upserts Prisma **`Participant`** (adds **`firebaseUid`**).
-- **Auth (pick one):** (1) `Authorization: Bearer <Firebase ID token>` — configure **`FIREBASE_PROJECT_ID`**, **`FIREBASE_CLIENT_EMAIL`**, **`FIREBASE_PRIVATE_KEY`** in `backend/.env` (service account from Firebase Console). (2) **`X-Member-Sync-Secret`** matching `MEMBER_SYNC_SECRET` — for trusted servers only, not the browser. (3) If neither secret nor Firebase Admin is configured, the route accepts unauthenticated calls (**local dev only**).
-- **Frontend:** `VITE_API_BASE_URL` set → after sign-in, the app calls sync with the member’s ID token (`frontend/src/services/memberSyncService.js`).
-- **Optional Next.js** (if you add Next): `app/api/sync-member/route.js` proxies to Nest (`NEST_API_URL`); forward **`Authorization`** from the client or set **`MEMBER_SYNC_SECRET`** server-side. Raw `lib/db.js` is for edge/scripts, not the main app schema.
+- **Auth (pick one):** (1) `Authorization: Bearer <Firebase ID token>` — **Nest:** `firebase-admin` + service account in `backend/.env`. **Next Edge:** `jose` + JWKS + **`FIREBASE_PROJECT_ID`** only (no private key on the Edge). (2) **`X-Member-Sync-Secret`** matching `MEMBER_SYNC_SECRET` — trusted servers only, not the browser. (3) If neither secret nor full Firebase Admin (Nest) / project id (Edge) applies per route rules, the route can accept body-only sync (**local dev only** — same semantics as Nest).
+- **Frontend:** `VITE_API_BASE_URL` set → after sign-in, the app calls sync with the member’s ID token (`frontend/src/services/memberSyncService.js`). Path is **`POST /auth/sync-member`** (Next rewrites it to `/api/auth/sync-member`).
+- **Next.js Edge sync** (`app/api/auth/sync-member/route.ts`): implements the same **`Participant`** upsert as Nest using **`getSql()`** from `lib/db.ts` (no Prisma on Edge). Env on Pages: **`DATABASE_URL`**, **`FIREBASE_PROJECT_ID`**, optional **`MEMBER_SYNC_SECRET`**. Run `npm run next:dev` (port **3040** by default) or `npm run next:build` for production.
 
 ## Compliance note
 

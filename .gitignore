@@ -17,6 +17,8 @@ frontend/.env.production
 # Build outputs
 frontend/dist/
 backend/dist/
+.next/
+out/
 
 # Logs and caches
 npm-debug.log*
