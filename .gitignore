@@ -9,6 +9,9 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
+backend/.env.production
+frontend/.env.production
 *.pem
 
 # Build outputs
