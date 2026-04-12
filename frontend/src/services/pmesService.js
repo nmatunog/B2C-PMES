@@ -249,6 +249,23 @@ export const PmesService = {
     return response.json();
   },
 
+  /** Updates Firebase primary email + Participant row; Bearer must match current email. */
+  async patchMemberLoginEmail({ email, newEmail, idToken }) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/pmes/member/login-email`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+      },
+      body: JSON.stringify({ email: String(email || "").trim(), newEmail: String(newEmail || "").trim() }),
+    });
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
   async submitFullProfile({ email, profileJson, sheetFileName, notes, signal }) {
     if (!useRest()) throw new Error("API required");
     const response = await fetch(`${apiBase()}/pmes/full-profile`, {

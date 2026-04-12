@@ -476,6 +476,13 @@ export class PmesService {
     return { ...root, personal };
   }
 
+  private mergeContactEmailIntoProfileJson(profile: unknown, emailAddress: string): unknown {
+    const root = asObject(profile);
+    if (!root) return profile;
+    const contact = asObject(root.contact) ?? {};
+    return { ...root, contact: { ...contact, emailAddress } };
+  }
+
   /** Member-facing: derive cooperative membership pipeline from DB */
   async getMembershipLifecycle(emailRaw: string) {
     const email = normalizeEmail(emailRaw);
@@ -1113,6 +1120,85 @@ export class PmesService {
         lastNameSeq: updated.lastNameSeq,
       }),
     };
+  }
+
+  /**
+   * Member: align Firebase Auth + Postgres login email; patch `contact.emailAddress` in stored profile JSON when present.
+   */
+  async updateMemberLoginEmail(dto: { email: string; newEmail: string }) {
+    const current = normalizeEmail(dto.email);
+    const participant = await this.prisma.participant.findUnique({
+      where: { email: current },
+      include: {
+        pmesRecords: { orderBy: { timestamp: "desc" } },
+        loiSubmission: true,
+      },
+    });
+    if (!participant) {
+      throw new NotFoundException("Participant not found");
+    }
+    if (!participant.firebaseUid) {
+      throw new BadRequestException("Your account is not linked to Firebase yet; sign in with email/password first.");
+    }
+
+    const next = normalizeEmail(dto.newEmail);
+    if (next === current) {
+      return { success: true as const, changed: false as const, newLoginEmail: current };
+    }
+
+    const previousLoginEmail = current;
+    const uid = participant.firebaseUid;
+    const migratedLoginEmail = await this.auth.updateFirebasePrimaryEmail(uid, dto.newEmail);
+
+    let nextSnapshot: Prisma.InputJsonValue | undefined;
+    if (participant.memberProfileSnapshot != null) {
+      const merged = this.mergeContactEmailIntoProfileJson(
+        participant.memberProfileSnapshot as unknown,
+        migratedLoginEmail,
+      );
+      if (asObject(merged)) {
+        nextSnapshot = merged as Prisma.InputJsonValue;
+      }
+    }
+
+    let nextFullProfileJson: string | undefined;
+    const env = parseFullProfileEnvelope(participant.fullProfileJson);
+    if (env && env.profile !== undefined) {
+      const mergedProfile = this.mergeContactEmailIntoProfileJson(env.profile, migratedLoginEmail);
+      nextFullProfileJson = JSON.stringify({ ...env, profile: mergedProfile });
+    }
+
+    try {
+      const updated = await this.prisma.participant.update({
+        where: { id: participant.id },
+        data: {
+          email: migratedLoginEmail,
+          ...(nextSnapshot !== undefined ? { memberProfileSnapshot: nextSnapshot } : {}),
+          ...(nextFullProfileJson !== undefined ? { fullProfileJson: nextFullProfileJson } : {}),
+        },
+        include: {
+          pmesRecords: { orderBy: { timestamp: "desc" } },
+          loiSubmission: true,
+        },
+      });
+      return {
+        success: true as const,
+        changed: true as const,
+        newLoginEmail: migratedLoginEmail,
+        loginEmailUpdated: true as const,
+        lifecycle: this.toLifecyclePayload(updated),
+      };
+    } catch (err) {
+      try {
+        await this.auth.updateFirebasePrimaryEmail(uid, previousLoginEmail);
+      } catch (rollbackErr) {
+        this.logger.error(
+          "Failed to revert Firebase primary email after login-email DB failure; manual fix may be needed.",
+          rollbackErr instanceof Error ? rollbackErr.stack : String(rollbackErr),
+        );
+      }
+      throw err;
+    }
   }
 
   private async assertCallsignAvailable(normalized: string, excludeParticipantId: string): Promise<void> {

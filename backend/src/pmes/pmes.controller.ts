@@ -19,6 +19,7 @@ import { CreatePmesDto } from "./dto/create-pmes.dto";
 import { ImportLegacyPioneersDto } from "./dto/import-legacy-pioneers.dto";
 import { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
 import { SetCallsignDto } from "./dto/set-callsign.dto";
+import { UpdateMemberLoginEmailDto } from "./dto/update-member-login-email.dto";
 import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import { SuperuserSetMemberIdDto } from "./dto/superuser-set-member-id.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
@@ -96,6 +97,20 @@ export class PmesController {
   ) {
     await this.auth.assertMemberEmailMatchesFirebaseToken(authorization, dto.email);
     return this.pmes.setMemberCallsign(dto);
+  }
+
+  /**
+   * Change Firebase primary email + `Participant.email`; keeps `contact.emailAddress` in profile snapshots when present.
+   * Requires Firebase ID token for the current email.
+   */
+  @Patch("member/login-email")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async updateMemberLoginEmail(
+    @Headers("authorization") authorization: string | undefined,
+    @Body() dto: UpdateMemberLoginEmailDto,
+  ) {
+    await this.auth.assertMemberEmailMatchesFirebaseToken(authorization, dto.email);
+    return this.pmes.updateMemberLoginEmail(dto);
   }
 
   /** Public: verify pioneer roster match (full name + TIN) before Firebase sign-up; response includes signInEmail. */

@@ -301,6 +301,12 @@ export default function App() {
     dob: "",
     residenceAddress: "",
   });
+  /** Member profile screen: optional Firebase + Postgres sign-in email change */
+  const [memberLoginEmailNew, setMemberLoginEmailNew] = useState("");
+  const [memberLoginEmailConfirm, setMemberLoginEmailConfirm] = useState("");
+  const [memberLoginEmailBusy, setMemberLoginEmailBusy] = useState(false);
+  const [memberLoginEmailError, setMemberLoginEmailError] = useState(/** @type {string | null} */ (null));
+  const [memberLoginEmailSuccess, setMemberLoginEmailSuccess] = useState(/** @type {string | null} */ (null));
   const [loiData, setLoiData] = useState({ address: "", occupation: "", employer: "", initialCapital: "", agreement: false });
   const [retrievalData, setRetrievalData] = useState({ email: "", dob: "" });
   const [pioneerReclaimFirstName, setPioneerReclaimFirstName] = useState("");
@@ -2675,6 +2681,108 @@ export default function App() {
               readOnly={Boolean(user?.email)}
               title={user?.email ? "Email is tied to your member login." : undefined}
             />
+            {user && useApiMembership ? (
+              <div className="rounded-2xl border border-[#004aad]/20 bg-slate-50/90 p-4 text-left sm:p-5">
+                <p className="text-sm font-black uppercase tracking-wide text-[#004aad]">Change sign-in email</p>
+                <p className="mt-2 text-xs font-medium leading-relaxed text-slate-600">
+                  Updates your Firebase login and the cooperative member record. Use an inbox you control for password resets.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="email"
+                    className="input-field"
+                    autoComplete="off"
+                    placeholder="New email address"
+                    value={memberLoginEmailNew}
+                    onChange={(e) => {
+                      setMemberLoginEmailNew(e.target.value);
+                      setMemberLoginEmailError(null);
+                      setMemberLoginEmailSuccess(null);
+                    }}
+                    disabled={memberLoginEmailBusy}
+                  />
+                  <input
+                    type="email"
+                    className="input-field"
+                    autoComplete="off"
+                    placeholder="Confirm new email"
+                    value={memberLoginEmailConfirm}
+                    onChange={(e) => {
+                      setMemberLoginEmailConfirm(e.target.value);
+                      setMemberLoginEmailError(null);
+                      setMemberLoginEmailSuccess(null);
+                    }}
+                    disabled={memberLoginEmailBusy}
+                  />
+                </div>
+                {memberLoginEmailError ? (
+                  <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{memberLoginEmailError}</div>
+                ) : null}
+                {memberLoginEmailSuccess ? (
+                  <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">
+                    {memberLoginEmailSuccess}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={memberLoginEmailBusy}
+                  onClick={async () => {
+                    setMemberLoginEmailError(null);
+                    setMemberLoginEmailSuccess(null);
+                    const n = String(memberLoginEmailNew || "").trim();
+                    const c = String(memberLoginEmailConfirm || "").trim();
+                    if (!n || !c) {
+                      setMemberLoginEmailError("Enter and confirm the new email address.");
+                      return;
+                    }
+                    if (n.toLowerCase() !== c.toLowerCase()) {
+                      setMemberLoginEmailError("Confirmation does not match the new email.");
+                      return;
+                    }
+                    const cur = String(user?.email || "").trim();
+                    if (!cur || n.toLowerCase() === cur.toLowerCase()) {
+                      setMemberLoginEmailError("Choose an address different from your current sign-in email.");
+                      return;
+                    }
+                    setMemberLoginEmailBusy(true);
+                    try {
+                      const token = await user.getIdToken();
+                      /** @type {{ newLoginEmail?: string; loginEmailUpdated?: boolean }} */
+                      const out = await PmesService.patchMemberLoginEmail({
+                        email: cur,
+                        newEmail: n,
+                        idToken: token,
+                      });
+                      if (out?.loginEmailUpdated && auth.currentUser) {
+                        await reload(auth.currentUser);
+                        await auth.currentUser.getIdToken(true);
+                      }
+                      const nextEmail = typeof out?.newLoginEmail === "string" ? out.newLoginEmail.trim() : n;
+                      setFormData((prev) => ({ ...prev, email: nextEmail }));
+                      setRetrievalData((prev) => ({ ...prev, email: nextEmail }));
+                      setMemberLoginEmailNew("");
+                      setMemberLoginEmailConfirm("");
+                      setMemberLoginEmailSuccess("Sign-in email updated. Use this address the next time you log in.");
+                      void refreshMembershipLifecycle();
+                    } catch (e) {
+                      setMemberLoginEmailError(e instanceof Error ? e.message : "Could not update sign-in email.");
+                    } finally {
+                      setMemberLoginEmailBusy(false);
+                    }
+                  }}
+                  className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border-2 border-[#004aad]/30 bg-white px-4 py-3 text-sm font-black uppercase tracking-wide text-[#004aad] shadow-sm transition hover:border-[#004aad]/50 hover:bg-[#004aad]/5 disabled:opacity-50 sm:w-auto"
+                >
+                  {memberLoginEmailBusy ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
+                      Updating…
+                    </>
+                  ) : (
+                    "Update sign-in email"
+                  )}
+                </button>
+              </div>
+            ) : null}
             <input type="tel" className="input-field" placeholder="Mobile number" value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} />
             <textarea
               className="input-field min-h-[6rem] resize-y"
