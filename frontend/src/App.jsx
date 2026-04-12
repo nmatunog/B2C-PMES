@@ -1623,8 +1623,8 @@ export default function App() {
               <div>
                 <h1 className="text-2xl font-black uppercase tracking-tight text-[#004aad]">Founding pioneer</h1>
                 <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">
-                  If you were on the roster before this app, confirm the email and birth date we have on file (birth date must
-                  match exactly, format <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span>). Then use{" "}
+                  If you were on the roster before this app, confirm the email and birth date we have on file. The server matches
+                  your birth date as <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span> (ISO). Then use{" "}
                   <strong>that same email</strong> to sign in or create your account so your digital membership form opens.
                 </p>
               </div>
@@ -1672,8 +1672,10 @@ export default function App() {
                       Date of birth
                     </label>
                     <p className="mb-2 text-xs font-medium leading-relaxed text-slate-600">
-                      Use <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span> (e.g.{" "}
-                      <span className="font-mono">1985-06-15</span>). It must match the date stored for your roster row.
+                      Use the calendar to pick your birth date. Your browser may show another <em>display</em> style (e.g.{" "}
+                      08/23/1967) — that is normal. We still verify the same calendar day as{" "}
+                      <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span> in the roster (e.g.{" "}
+                      <span className="font-mono">1967-08-23</span>).
                     </p>
                     <input
                       id="pioneer-dob"
@@ -1684,6 +1686,12 @@ export default function App() {
                       onChange={(ev) => setPioneerReclaimDob(ev.target.value)}
                       required
                     />
+                    {pioneerReclaimDob.trim() ? (
+                      <p className="mt-1.5 text-xs font-semibold text-slate-700" aria-live="polite">
+                        We&apos;ll verify as:{" "}
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-slate-900">{pioneerReclaimDob.trim()}</span>
+                      </p>
+                    ) : null}
                     <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium leading-relaxed text-slate-700">
                       <strong className="text-slate-900">No birth date on the import?</strong> We may have stored the placeholder{" "}
                       <span className="font-mono font-bold">1900-01-01</span>. Enter that here to verify, then put your real date
