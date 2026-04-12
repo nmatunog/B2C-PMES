@@ -109,8 +109,8 @@ export class PmesController {
     @Headers("authorization") authorization: string | undefined,
     @Body() dto: UpdateMemberLoginEmailDto,
   ) {
-    await this.auth.assertMemberEmailMatchesFirebaseToken(authorization, dto.email);
-    return this.pmes.updateMemberLoginEmail(dto);
+    const firebaseUidFromToken = await this.auth.verifyMemberEmailBearer(authorization, dto.email);
+    return this.pmes.updateMemberLoginEmail(dto, firebaseUidFromToken);
   }
 
   /** Public: verify pioneer roster match (full name + TIN) before Firebase sign-up; response includes signInEmail. */

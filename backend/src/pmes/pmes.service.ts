@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -1124,10 +1125,11 @@ export class PmesService {
 
   /**
    * Member: align Firebase Auth + Postgres login email; patch `contact.emailAddress` in stored profile JSON when present.
+   * @param firebaseUidFromToken UID from verified ID token (same email). Used to set `Participant.firebaseUid` when missing.
    */
-  async updateMemberLoginEmail(dto: { email: string; newEmail: string }) {
+  async updateMemberLoginEmail(dto: { email: string; newEmail: string }, firebaseUidFromToken: string | null) {
     const current = normalizeEmail(dto.email);
-    const participant = await this.prisma.participant.findUnique({
+    let participant = await this.prisma.participant.findUnique({
       where: { email: current },
       include: {
         pmesRecords: { orderBy: { timestamp: "desc" } },
@@ -1137,8 +1139,34 @@ export class PmesService {
     if (!participant) {
       throw new NotFoundException("Participant not found");
     }
-    if (!participant.firebaseUid) {
-      throw new BadRequestException("Your account is not linked to Firebase yet; sign in with email/password first.");
+
+    let uid: string;
+    if (participant.firebaseUid) {
+      if (firebaseUidFromToken && participant.firebaseUid !== firebaseUidFromToken) {
+        throw new ForbiddenException("Your session does not match this member record.");
+      }
+      uid = participant.firebaseUid;
+    } else if (firebaseUidFromToken) {
+      const existingUid = await this.prisma.participant.findUnique({
+        where: { firebaseUid: firebaseUidFromToken },
+        select: { id: true },
+      });
+      if (existingUid && existingUid.id !== participant.id) {
+        throw new ConflictException("This Firebase login is already linked to another member record.");
+      }
+      participant = await this.prisma.participant.update({
+        where: { id: participant.id },
+        data: { firebaseUid: firebaseUidFromToken },
+        include: {
+          pmesRecords: { orderBy: { timestamp: "desc" } },
+          loiSubmission: true,
+        },
+      });
+      uid = firebaseUidFromToken;
+    } else {
+      throw new BadRequestException(
+        "Your cooperative record is missing a Firebase link. Sign out and sign in again, or contact support.",
+      );
     }
 
     const next = normalizeEmail(dto.newEmail);
@@ -1147,7 +1175,6 @@ export class PmesService {
     }
 
     const previousLoginEmail = current;
-    const uid = participant.firebaseUid;
     const migratedLoginEmail = await this.auth.updateFirebasePrimaryEmail(uid, dto.newEmail);
 
     let nextSnapshot: Prisma.InputJsonValue | undefined;

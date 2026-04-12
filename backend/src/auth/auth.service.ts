@@ -153,19 +153,19 @@ export class AuthService {
   }
 
   /**
-   * Member-only routes (e.g. optional callsign): Firebase ID token email must match `email`.
-   * When neither `MEMBER_SYNC_SECRET` nor Firebase Admin is configured, skips verification (local dev only).
+   * Verifies Firebase ID token email matches `emailRaw` and returns the token `uid`.
+   * When neither `MEMBER_SYNC_SECRET` nor Firebase Admin is configured, returns `null` (local dev only — no uid).
    */
-  async assertMemberEmailMatchesFirebaseToken(
+  async verifyMemberEmailBearer(
     authorization: string | undefined,
     emailRaw: string,
-  ): Promise<void> {
+  ): Promise<string | null> {
     const normalized = emailRaw.trim().toLowerCase();
     const expected = String(this.config.get<string>("MEMBER_SYNC_SECRET") ?? "").trim();
     const hasSecret = Boolean(expected);
     const hasAdmin = this.isFirebaseAdminConfigured();
     if (!hasSecret && !hasAdmin) {
-      return;
+      return null;
     }
     const bearer = this.extractBearer(authorization);
     if (!bearer) {
@@ -184,10 +184,22 @@ export class AuthService {
       if (!tokenEmail || tokenEmail !== normalized) {
         throw new UnauthorizedException("ID token email does not match member email");
       }
+      return decoded.uid;
     } catch (e) {
       if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException("Invalid Firebase ID token");
     }
+  }
+
+  /**
+   * Member-only routes (e.g. optional callsign): Firebase ID token email must match `email`.
+   * When neither `MEMBER_SYNC_SECRET` nor Firebase Admin is configured, skips verification (local dev only).
+   */
+  async assertMemberEmailMatchesFirebaseToken(
+    authorization: string | undefined,
+    emailRaw: string,
+  ): Promise<void> {
+    await this.verifyMemberEmailBearer(authorization, emailRaw);
   }
 
   async staffLogin(email: string, password: string): Promise<StaffLoginResponse> {
