@@ -43,7 +43,8 @@ export function cohortYYFromDob(dob: string, createdAt: Date): string {
   return String(createdAt.getFullYear() % 100).padStart(2, "0");
 }
 
-function parseYearFromDob(dob: string): number | null {
+/** ISO or US-style date string → calendar year, or null if not parseable. */
+export function parseYearFromDob(dob: string): number | null {
   const d = dob.trim();
   if (!d || /^pending$/i.test(d)) return null;
   const iso = d.match(/^(\d{4})-\d{2}-\d{2}/);

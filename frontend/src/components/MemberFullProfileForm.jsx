@@ -72,6 +72,8 @@ export function MemberFullProfileForm({
   memberEmail,
   /** Server-assigned public member ID (B2C-…); shown read-only when present. */
   assignedMemberId = "",
+  /** True until first full-profile submit: middle segment is registration year, not birth cohort yet. */
+  memberIdIsProvisional = false,
   /** Server-normalized callsign when already saved. */
   assignedCallsign = "",
   /** After PATCH callsign, refresh membership lifecycle from parent. */
@@ -276,8 +278,20 @@ export function MemberFullProfileForm({
           />
           {String(assignedMemberId ?? "").trim() ? (
             <p className="mt-1.5 text-xs font-medium leading-snug text-slate-500">
-              Your initials and birth-year cohort are in this code; the last segment is random so others cannot guess valid
-              IDs. Use this number on cooperative paperwork and when staff asks for your member ID.
+              {memberIdIsProvisional ? (
+                <>
+                  <span className="font-semibold text-slate-700">Provisional ID:</span> the middle two digits are the year you
+                  registered in this app (e.g. 26 for 2026) when your account had no date of birth on file. After you submit
+                  this form with your <span className="font-semibold">legal date of birth</span>, the server assigns your{" "}
+                  <span className="font-semibold">permanent</span> member ID using your birth-year cohort. The last segment
+                  stays random for security.
+                </>
+              ) : (
+                <>
+                  Your initials and birth-year cohort are in this code; the last segment is random so others cannot guess
+                  valid IDs. Use this number on cooperative paperwork and when staff asks for your member ID.
+                </>
+              )}
             </p>
           ) : (
             <p className="mt-1.5 text-xs font-medium text-slate-500">

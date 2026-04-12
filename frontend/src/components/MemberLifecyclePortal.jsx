@@ -214,6 +214,11 @@ export function MemberLifecyclePortal({
               {lifecycle?.memberIdNo ? (
                 <p>
                   <span className="font-black uppercase tracking-wide text-[#004aad]">Member ID</span>
+                  {lifecycle?.memberIdIsProvisional ? (
+                    <span className="ml-2 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-950">
+                      Provisional
+                    </span>
+                  ) : null}
                   <span className="ml-2 font-mono font-semibold">{lifecycle.memberIdNo}</span>
                 </p>
               ) : null}
@@ -235,6 +240,7 @@ export function MemberLifecyclePortal({
           <MemberFullProfileForm
             memberEmail={email}
             assignedMemberId={typeof lifecycle?.memberIdNo === "string" ? lifecycle.memberIdNo : ""}
+            memberIdIsProvisional={lifecycle?.memberIdIsProvisional === true}
             assignedCallsign={typeof lifecycle?.callsign === "string" ? lifecycle.callsign : ""}
             onRefreshLifecycle={onRefreshLifecycle}
             submitting={submitting}

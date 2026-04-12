@@ -25,6 +25,7 @@ import {
   cohortYYFromDob,
   initialsFromFirstLast,
   initialsFromFullName,
+  parseYearFromDob,
 } from "./member-public-id";
 import type { LoiSubmission, Participant, PmesRecord } from "@prisma/client";
 
@@ -43,6 +44,20 @@ function normalizeEmail(email: string): string {
 
 function digitsOnly(s: string | null | undefined): string {
   return String(s ?? "").replace(/\D/g, "");
+}
+
+/** Normalize profile birthDate to `YYYY-MM-DD` for the Participant.dob column when possible. */
+function normalizeProfileDobForParticipantColumn(raw: string): string | undefined {
+  const t = raw.trim();
+  const iso = t.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1]!;
+  const us = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (us) {
+    const mm = us[1]!.padStart(2, "0");
+    const dd = us[2]!.padStart(2, "0");
+    return `${us[3]!}-${mm}-${dd}`;
+  }
+  return undefined;
 }
 
 /** Legacy pioneer import stored PH TIN in `memberIdNo` for reclaim — blocks real B2C public ID until moved to `tinNo`. */
@@ -459,6 +474,7 @@ export class PmesService {
         memberIdNo: null as string | null,
         callsign: null as string | null,
         alternatePublicHandle: null as string | null,
+        memberIdIsProvisional: false,
       };
     }
     const withMemberId = await this.ensureMemberPublicId(participant);
@@ -520,7 +536,8 @@ export class PmesService {
       throw new BadRequestException("profileJson must be valid JSON.");
     }
 
-    const withMemberId = await this.ensureMemberPublicId(participant, parsed);
+    const afterTinAndProvisional = await this.ensureMemberPublicId(participant, parsed);
+    const withMemberId = await this.assignPermanentMemberIdForFullProfileSubmit(afterTinAndProvisional, parsed);
     const root = asObject(parsed);
     if (root && withMemberId.memberIdNo?.trim()) {
       const personal = asObject(root.personal) ?? {};
@@ -528,6 +545,11 @@ export class PmesService {
       root.personal = personal;
       parsed = root;
     }
+
+    const personalForDob = asObject(asObject(parsed)?.personal);
+    const birthDateRaw =
+      personalForDob && typeof personalForDob.birthDate === "string" ? personalForDob.birthDate.trim() : "";
+    const dobFromProfile = birthDateRaw ? normalizeProfileDobForParticipantColumn(birthDateRaw) : undefined;
 
     const rootForCallsign = asObject(parsed);
     let callsignOut: string | null = null;
@@ -587,6 +609,7 @@ export class PmesService {
           mailingAddress: derived.mailingAddress.trim() || null,
           civilStatus: derived.civilStatus.trim() || null,
           memberIdNo: withMemberId.memberIdNo?.trim() || derived.memberIdNo.trim() || null,
+          ...(dobFromProfile ? { dob: dobFromProfile } : {}),
           callsign: callsignOut,
           lastNameKey,
           lastNameSeq,
@@ -917,6 +940,11 @@ export class PmesService {
         lastNameKey: participant.lastNameKey,
         lastNameSeq: participant.lastNameSeq,
       }),
+      /**
+       * True until the first successful full-profile submit. Provisional IDs use the registration-year cohort when the
+       * account had no reliable DOB; submit replaces with a permanent ID from the form date of birth.
+       */
+      memberIdIsProvisional: !profile,
     };
   }
 
@@ -1036,9 +1064,10 @@ export class PmesService {
   }
 
   /**
-   * Assigns a public member ID when missing: `B2C-{initials}-{cohortYY}-{rand4}`.
-   * Preserves any real cooperative ID. Older pioneer imports put **TIN** in `memberIdNo` — those are moved to `tinNo`
-   * so generation can run.
+   * Assigns a **provisional** public member ID when missing: `B2C-{initials}-{cohortYY}-{rand4}`.
+   * Cohort uses account `dob` when year is 1920–2100; otherwise **registration year** (e.g. 26 for 2026). First full-profile
+   * submit replaces this with a **permanent** ID from the form date of birth (`assignPermanentMemberIdForFullProfileSubmit`).
+   * Preserves any non-empty ID. Older pioneer imports put **TIN** in `memberIdNo` — moved to `tinNo` first.
    */
   private async ensureMemberPublicId(
     participant: ParticipantWithRelations,
@@ -1099,6 +1128,67 @@ export class PmesService {
     }
 
     throw new InternalServerErrorException("Could not allocate a unique member ID after retries.");
+  }
+
+  /**
+   * First full-profile submission: assign permanent `B2C-…` from legal name + **form** date of birth cohort.
+   * Replaces any provisional ID (registration-year middle segment from account creation).
+   */
+  private async assignPermanentMemberIdForFullProfileSubmit(
+    participant: ParticipantWithRelations,
+    profile: unknown,
+  ): Promise<ParticipantWithRelations> {
+    const root = asObject(profile);
+    const personal = root ? asObject(root.personal) : null;
+    const birthDateRaw = personal && typeof personal.birthDate === "string" ? personal.birthDate.trim() : "";
+    if (!birthDateRaw) {
+      throw new BadRequestException(
+        "Enter your date of birth on the membership form to finalize your permanent member ID (middle segment = your birth year).",
+      );
+    }
+    const y = parseYearFromDob(birthDateRaw);
+    if (y === null || y < 1920 || y > 2100) {
+      throw new BadRequestException(
+        "Enter a valid date of birth (year 1920–2100) so your member ID can use the correct birth-year cohort.",
+      );
+    }
+
+    const fn = personal && typeof personal.firstName === "string" ? personal.firstName : "";
+    const ln = personal && typeof personal.lastName === "string" ? personal.lastName : "";
+    let initials = initialsFromFullName(participant.fullName);
+    if (fn.trim() && ln.trim()) {
+      initials = initialsFromFirstLast(fn, ln, participant.fullName);
+    }
+
+    const yy = cohortYYFromDob(birthDateRaw, participant.createdAt);
+    const oldId = String(participant.memberIdNo ?? "").trim();
+
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const id = buildMemberPublicId(initials, yy);
+      const clash = await this.prisma.participant.findFirst({
+        where: {
+          memberIdNo: { equals: id, mode: "insensitive" },
+          id: { not: participant.id },
+        },
+        select: { id: true },
+      });
+      if (clash) continue;
+
+      if (id === oldId) {
+        return participant;
+      }
+
+      return await this.prisma.participant.update({
+        where: { id: participant.id },
+        data: { memberIdNo: id },
+        include: {
+          pmesRecords: { orderBy: { timestamp: "desc" } },
+          loiSubmission: true,
+        },
+      });
+    }
+
+    throw new InternalServerErrorException("Could not allocate a unique permanent member ID after retries.");
   }
 
   private flattenRecord(
