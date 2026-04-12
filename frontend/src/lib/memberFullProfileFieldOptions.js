@@ -27,6 +27,25 @@ export const SEX_GENDER_OPTIONS = asOptions([
 
 export const BLOOD_TYPE_OPTIONS = asOptions(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"]);
 
+/** Feet for `heightFeetInches` (stored as `5' 8"`). */
+export const HEIGHT_FEET_OPTIONS = asOptions(["3", "4", "5", "6", "7", "8"]);
+
+/** Inches (0–11). */
+export const HEIGHT_INCHES_OPTIONS = asOptions([
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+]);
+
 export const NAME_SUFFIX_OPTIONS = [{ value: "", label: "None" }, ...asOptions(["Jr.", "Sr.", "II", "III", "IV", "V"])];
 
 export const COUNTRY_OPTIONS = asOptions([

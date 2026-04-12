@@ -11,6 +11,8 @@ import {
   COUNTRY_OPTIONS,
   EMPLOYMENT_SECTOR_OPTIONS,
   EMPLOYMENT_STATUS_OPTIONS,
+  HEIGHT_FEET_OPTIONS,
+  HEIGHT_INCHES_OPTIONS,
   HIGHEST_EDUCATION_OPTIONS,
   JOB_LEVEL_OPTIONS,
   NAME_SUFFIX_OPTIONS,
@@ -21,6 +23,7 @@ import {
   SEX_GENDER_OPTIONS,
   YES_NO_NA_OPTIONS,
 } from "../lib/memberFullProfileFieldOptions.js";
+import { formatHeightFeetInches, parseHeightFeetInches } from "../lib/memberHeightFormat.js";
 import {
   mapRegistrationGenderToSexGender,
   registrationDobToBirthDate,
@@ -76,9 +79,9 @@ function TextArea({ label, value, onChange, rows = 2 }) {
 }
 
 /**
- * @param {{ label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; required?: boolean; placeholder?: string; className?: string }} props
+ * @param {{ label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; required?: boolean; placeholder?: string; className?: string; disabled?: boolean }} props
  */
-function Select({ label, value, onChange, options, required, placeholder = "Choose…", className = "" }) {
+function Select({ label, value, onChange, options, required, placeholder = "Choose…", className = "", disabled = false }) {
   const mergedOptions = useMemo(() => {
     const list = [...options];
     const v = String(value ?? "");
@@ -96,7 +99,8 @@ function Select({ label, value, onChange, options, required, placeholder = "Choo
       {label}
       {required ? <span className="text-red-600"> *</span> : null}
       <select
-        className="input-field mt-1 text-sm font-medium text-slate-900"
+        disabled={disabled}
+        className="input-field mt-1 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-50"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -122,6 +126,68 @@ function Section({ title, children, defaultOpen = false }) {
       </summary>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">{children}</div>
     </details>
+  );
+}
+
+/**
+ * Standard height: feet + inches dropdowns; stored as `5' 8"`. Unparseable legacy text gets a clear + re-pick path.
+ * @param {{ value: string; onChange: (v: string) => void }} props
+ */
+function HeightFeetInchesFields({ value, onChange }) {
+  const parsed = useMemo(() => parseHeightFeetInches(value), [value]);
+  const isLegacy = parsed.legacy;
+
+  const handleFeet = (ft) => {
+    if (!ft) {
+      onChange("");
+      return;
+    }
+    const cur = parseHeightFeetInches(value);
+    onChange(formatHeightFeetInches(ft, cur.inches || "0"));
+  };
+
+  const handleInches = (inch) => {
+    const cur = parseHeightFeetInches(value);
+    if (!cur.feet) return;
+    onChange(formatHeightFeetInches(cur.feet, inch));
+  };
+
+  if (isLegacy) {
+    return (
+      <div className="sm:col-span-2 space-y-2 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-amber-950">Height (non-standard format on file)</p>
+        <p className="text-sm font-medium text-slate-900">
+          <span className="font-mono">{value}</span>
+        </p>
+        <button
+          type="button"
+          className="text-xs font-black uppercase tracking-wide text-[#004aad] underline underline-offset-2 hover:text-[#003d8a]"
+          onClick={() => onChange("")}
+        >
+          Clear and choose feet / inches
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Select
+        label="Height — feet"
+        value={parsed.feet}
+        onChange={handleFeet}
+        options={HEIGHT_FEET_OPTIONS}
+        placeholder="—"
+      />
+      <Select
+        label="Height — inches"
+        value={parsed.inches}
+        onChange={handleInches}
+        options={HEIGHT_INCHES_OPTIONS}
+        placeholder="—"
+        disabled={!parsed.feet}
+      />
+    </>
   );
 }
 
@@ -791,7 +857,10 @@ export function MemberFullProfileForm({
           required
           placeholder="Select blood type"
         />
-        <Text label="Height (ft & in)" value={pr.heightFeetInches} onChange={(v) => setPersonal({ heightFeetInches: v })} />
+        <HeightFeetInchesFields
+          value={pr.heightFeetInches}
+          onChange={(v) => setPersonal({ heightFeetInches: v })}
+        />
         <Text label="Weight (kg)" value={pr.weightKg} onChange={(v) => setPersonal({ weightKg: v })} />
         <Select
           label="No. of children"

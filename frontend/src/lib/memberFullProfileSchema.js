@@ -37,6 +37,7 @@ export function createEmptyMemberProfile() {
       civilStatus: "",
       sexGender: "",
       bloodType: "",
+      /** Canonical: `5' 8"` from feet + inches dropdowns (see `memberHeightFormat.js`). */
       heightFeetInches: "",
       weightKg: "",
       noOfChildren: "",
