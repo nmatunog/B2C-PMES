@@ -51,12 +51,27 @@ model Participant {
   mailingAddress      String?   @db.Text
   civilStatus           String?
   memberIdNo            String?
+  /**
+   * Optional member-chosen handle (lowercase). Unique when set; authenticated changes via PATCH /pmes/member/callsign.
+   * Alternate public label when set; otherwise see lastNameKey + lastNameSeq (e.g. cruz-2).
+   */
+  callsign              String?   @unique
+  /** Normalized slug from legal last name for default alternate id (e.g. delacruz). */
+  lastNameKey           String?
+  /** Sequence within lastNameKey for default alternate (brothers share surname → cruz-1, cruz-2). */
+  lastNameSeq           Int?
   /** Preloaded roster row (admin import): member reclaims Firebase account + completes digital profile */
   legacyPioneerImport   Boolean   @default(false)
   /** Full legacy sheet row (B2C registry columns + extras) for audit and reclaim support */
   registryImportSnapshot Json?
   pmesRecords   PmesRecord[]
   loiSubmission LoiSubmission?
+}
+
+/** Atomic per-surname sequence for default alternate ids (lastname-1, lastname-2, …). */
+model LastNameCounter {
+  lastNameKey String @id
+  nextSeq     Int    @default(0)
 }
 
 model PmesRecord {

@@ -3,6 +3,8 @@ import { FileSpreadsheet, Loader2, Lock } from "lucide-react";
 import { B2CLogo } from "./B2CLogo.jsx";
 import { createEmptyMemberProfile } from "../lib/memberFullProfileSchema.js";
 import { profileToCsvString } from "../lib/memberProfileFlatten.js";
+import { auth } from "../services/firebase";
+import { PmesService } from "../services/pmesService";
 
 /** Printed on the membership sheet letterhead; also merged into submit/CSV export. */
 const OFFICIAL_COOPERATIVE_ADDRESS =
@@ -70,12 +72,17 @@ export function MemberFullProfileForm({
   memberEmail,
   /** Server-assigned public member ID (B2C-…); shown read-only when present. */
   assignedMemberId = "",
+  /** Server-normalized callsign when already saved. */
+  assignedCallsign = "",
+  /** After PATCH callsign, refresh membership lifecycle from parent. */
+  onRefreshLifecycle,
   onSubmitSuccess,
   submitting,
   localError,
 }) {
   const [profile, setProfile] = useState(() => createEmptyMemberProfile());
   const [sheetFile, setSheetFile] = useState(/** @type {File | null} */ (null));
+  const [callsignMsg, setCallsignMsg] = useState(/** @type {string | null} */ (null));
 
   useEffect(() => {
     const id = String(assignedMemberId ?? "").trim();
@@ -85,6 +92,15 @@ export function MemberFullProfileForm({
       return { ...p, personal: { ...p.personal, memberIdNo: id } };
     });
   }, [assignedMemberId]);
+
+  useEffect(() => {
+    const c = String(assignedCallsign ?? "").trim();
+    if (!c) return;
+    setProfile((p) => {
+      if (p.personal.callsign === c) return p;
+      return { ...p, personal: { ...p.personal, callsign: c } };
+    });
+  }, [assignedCallsign]);
 
   const csvBlobUrl = useMemo(() => {
     const forExport = {
@@ -268,6 +284,46 @@ export function MemberFullProfileForm({
               Your member ID appears here automatically once the server assigns it (usually when this page loads).
             </p>
           )}
+        </div>
+        <div className="sm:col-span-2 space-y-2">
+          <Text label="Callsign (optional)" value={pr.callsign} onChange={(v) => setPersonal({ callsign: v })} />
+          <p className="text-xs font-medium leading-snug text-slate-500">
+            Shown as your <span className="font-semibold text-slate-700">alternate label</span> alongside your Member ID. If
+            you leave this blank, the server assigns{' '}
+            <span className="font-mono text-slate-800">lastname-1</span>, <span className="font-mono text-slate-800">-2</span>
+            , … from your legal surname below (for siblings with the same family name).
+          </p>
+          {onRefreshLifecycle && memberEmail ? (
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                className="inline-flex min-h-[40px] items-center rounded-xl border-2 border-[#004aad]/30 bg-white px-4 text-sm font-black uppercase tracking-wide text-[#004aad] transition hover:bg-[#004aad]/5"
+                onClick={async () => {
+                  setCallsignMsg(null);
+                  try {
+                    const u = auth.currentUser;
+                    if (!u) {
+                      setCallsignMsg("Sign in required.");
+                      return;
+                    }
+                    const token = await u.getIdToken();
+                    await PmesService.patchMemberCallsign({
+                      email: memberEmail,
+                      callsign: pr.callsign?.trim() ?? "",
+                      idToken: token,
+                    });
+                    await onRefreshLifecycle();
+                    setCallsignMsg("Saved.");
+                  } catch (e) {
+                    setCallsignMsg(e instanceof Error ? e.message : "Could not save.");
+                  }
+                }}
+              >
+                Save callsign now
+              </button>
+              {callsignMsg ? <span className="text-sm font-medium text-slate-600">{callsignMsg}</span> : null}
+            </div>
+          ) : null}
         </div>
         <Text label="Last name" value={pr.lastName} onChange={(v) => setPersonal({ lastName: v })} required />
         <Text label="First name" value={pr.firstName} onChange={(v) => setPersonal({ firstName: v })} required />

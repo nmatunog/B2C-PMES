@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   NotFoundException,
   Param,
   Patch,
@@ -17,15 +18,20 @@ import { CreateLoiDto } from "./dto/create-loi.dto";
 import { CreatePmesDto } from "./dto/create-pmes.dto";
 import { ImportLegacyPioneersDto } from "./dto/import-legacy-pioneers.dto";
 import { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
+import { SetCallsignDto } from "./dto/set-callsign.dto";
 import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
+import { AuthService } from "../auth/auth.service";
 import { StaffJwtGuard } from "../auth/staff-jwt.guard";
 import { SuperuserGuard } from "../auth/superuser.guard";
 import { PmesService } from "./pmes.service";
 
 @Controller("pmes")
 export class PmesController {
-  constructor(private readonly pmes: PmesService) {}
+  constructor(
+    private readonly pmes: PmesService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Post("submit")
   submit(@Body() dto: CreatePmesDto) {
@@ -58,6 +64,20 @@ export class PmesController {
   @Post("full-profile")
   submitFullProfile(@Body() dto: SubmitFullProfileDto) {
     return this.pmes.submitFullProfile(dto);
+  }
+
+  /**
+   * Optional callsign (alternate to default last-name handle). Requires Firebase ID token for same email.
+   * Send empty `callsign` to clear and fall back to `lastname-seq`.
+   */
+  @Patch("member/callsign")
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async setMemberCallsign(
+    @Headers("authorization") authorization: string | undefined,
+    @Body() dto: SetCallsignDto,
+  ) {
+    await this.auth.assertMemberEmailMatchesFirebaseToken(authorization, dto.email);
+    return this.pmes.setMemberCallsign(dto);
   }
 
   /** Public: verify pioneer roster match (full name + TIN) before Firebase sign-up; response includes signInEmail. */

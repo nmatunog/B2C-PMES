@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -13,6 +14,11 @@ import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import type { ImportLegacyPioneerRowDto } from "./dto/import-legacy-pioneers.dto";
 import type { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
+import {
+  computeAlternatePublicHandle,
+  normalizeLastNameKey,
+  validateAndNormalizeCallsignInput,
+} from "./callsign.util";
 import { asObject, deriveFromMemberProfile, parseFullProfileEnvelope } from "./member-profile.extract";
 import {
   buildMemberPublicId,
@@ -349,6 +355,8 @@ export class PmesService {
         fullProfileCompleted: false,
         canAccessFullMemberPortal: false,
         memberIdNo: null as string | null,
+        callsign: null as string | null,
+        alternatePublicHandle: null as string | null,
       };
     }
     const withMemberId = await this.ensureMemberPublicId(participant);
@@ -419,6 +427,32 @@ export class PmesService {
       parsed = root;
     }
 
+    const rootForCallsign = asObject(parsed);
+    let callsignOut: string | null = null;
+    const personalForCallsign = rootForCallsign ? asObject(rootForCallsign.personal) : null;
+    const lastNameRaw =
+      personalForCallsign && typeof personalForCallsign.lastName === "string"
+        ? personalForCallsign.lastName
+        : "";
+    const slug = normalizeLastNameKey(lastNameRaw);
+    const rawCall =
+      personalForCallsign && typeof personalForCallsign.callsign === "string"
+        ? personalForCallsign.callsign.trim()
+        : "";
+    if (rawCall) {
+      callsignOut = validateAndNormalizeCallsignInput(rawCall);
+      await this.assertCallsignAvailable(callsignOut, withMemberId.id);
+    }
+    if (rootForCallsign && personalForCallsign) {
+      if (callsignOut) {
+        personalForCallsign.callsign = callsignOut;
+      } else {
+        delete personalForCallsign.callsign;
+      }
+      rootForCallsign.personal = personalForCallsign;
+      parsed = rootForCallsign;
+    }
+
     const payload = {
       formVersion: "b2c-membership-v1",
       profile: parsed,
@@ -429,17 +463,35 @@ export class PmesService {
 
     const derived = deriveFromMemberProfile(parsed);
 
-    await this.prisma.participant.update({
-      where: { id: participant.id },
-      data: {
-        fullProfileCompletedAt: new Date(),
-        fullProfileJson: JSON.stringify(payload),
-        memberProfileSnapshot: parsed as Prisma.InputJsonValue,
-        mailingAddress: derived.mailingAddress.trim() || null,
-        civilStatus: derived.civilStatus.trim() || null,
-        memberIdNo: withMemberId.memberIdNo?.trim() || derived.memberIdNo.trim() || null,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      let lastNameKey = participant.lastNameKey;
+      let lastNameSeq = participant.lastNameSeq;
+      if (slug && lastNameSeq == null) {
+        const row = await tx.lastNameCounter.upsert({
+          where: { lastNameKey: slug },
+          create: { lastNameKey: slug, nextSeq: 1 },
+          update: { nextSeq: { increment: 1 } },
+        });
+        lastNameKey = slug;
+        lastNameSeq = row.nextSeq;
+      }
+
+      await tx.participant.update({
+        where: { id: withMemberId.id },
+        data: {
+          fullProfileCompletedAt: new Date(),
+          fullProfileJson: JSON.stringify(payload),
+          memberProfileSnapshot: parsed as Prisma.InputJsonValue,
+          mailingAddress: derived.mailingAddress.trim() || null,
+          civilStatus: derived.civilStatus.trim() || null,
+          memberIdNo: withMemberId.memberIdNo?.trim() || derived.memberIdNo.trim() || null,
+          callsign: callsignOut,
+          lastNameKey,
+          lastNameSeq,
+        },
+      });
     });
+
     return { success: true };
   }
 
@@ -747,7 +799,76 @@ export class PmesService {
       isLegacyFounderImport: participant.legacyPioneerImport,
       /** Assigned once by the server; format B2C-{initials}-{YY}-{suffix} (memorable + unguessable tail). */
       memberIdNo: participant.memberIdNo,
+      /** Optional member-chosen handle (unique). */
+      callsign: participant.callsign,
+      /** Callsign if set, else `lastNameKey-lastNameSeq` when assigned (e.g. cruz-2). */
+      alternatePublicHandle: computeAlternatePublicHandle({
+        callsign: participant.callsign,
+        lastNameKey: participant.lastNameKey,
+        lastNameSeq: participant.lastNameSeq,
+      }),
     };
+  }
+
+  /**
+   * Optional callsign or clear it (Firebase-authenticated via controller).
+   * Does not change last-name sequence; clearing falls back to default alternate.
+   */
+  async setMemberCallsign(dto: { email: string; callsign?: string }) {
+    const email = normalizeEmail(dto.email);
+    const participant = await this.prisma.participant.findUnique({ where: { email } });
+    if (!participant) throw new NotFoundException("Participant not found");
+
+    const raw =
+      dto.callsign === undefined || dto.callsign === null ? "" : String(dto.callsign).trim();
+
+    if (!raw) {
+      const updated = await this.prisma.participant.update({
+        where: { id: participant.id },
+        data: { callsign: null },
+      });
+      return {
+        success: true as const,
+        callsign: null as string | null,
+        alternatePublicHandle: computeAlternatePublicHandle({
+          callsign: null,
+          lastNameKey: updated.lastNameKey,
+          lastNameSeq: updated.lastNameSeq,
+        }),
+      };
+    }
+
+    const normalized = validateAndNormalizeCallsignInput(raw);
+    await this.assertCallsignAvailable(normalized, participant.id);
+    const updated = await this.prisma.participant.update({
+      where: { id: participant.id },
+      data: { callsign: normalized },
+    });
+    return {
+      success: true as const,
+      callsign: normalized,
+      alternatePublicHandle: computeAlternatePublicHandle({
+        callsign: updated.callsign,
+        lastNameKey: updated.lastNameKey,
+        lastNameSeq: updated.lastNameSeq,
+      }),
+    };
+  }
+
+  private async assertCallsignAvailable(normalized: string, excludeParticipantId: string): Promise<void> {
+    const other = await this.prisma.participant.findFirst({
+      where: {
+        id: { not: excludeParticipantId },
+        OR: [
+          { callsign: normalized },
+          { memberIdNo: { equals: normalized, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (other) {
+      throw new ConflictException("That handle is already in use. Choose a different one.");
+    }
   }
 
   /**

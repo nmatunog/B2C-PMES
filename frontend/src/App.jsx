@@ -2557,6 +2557,7 @@ export default function App() {
                 setAppState("loi_form");
               }}
               onOpenPayment={() => setAppState("payment_portal")}
+              onRefreshLifecycle={() => refreshMembershipLifecycle()}
               onSubmitFullProfile={async ({ profileJson, sheetFileName, notes }) => {
                 if (!user?.email) return;
                 await PmesService.submitFullProfile({

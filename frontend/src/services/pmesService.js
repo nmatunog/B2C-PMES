@@ -249,6 +249,23 @@ export const PmesService = {
     return response.json();
   },
 
+  /** Optional callsign; Firebase Bearer required when Admin is configured. Empty string clears. */
+  async patchMemberCallsign({ email, callsign, idToken }) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/pmes/member/callsign`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+      },
+      body: JSON.stringify({ email: String(email || "").trim(), callsign }),
+    });
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Could not update callsign");
+    }
+    return response.json();
+  },
+
   async fetchMembershipPipeline(accessToken) {
     if (!useRest()) return [];
     const response = await fetch(`${apiBase()}/pmes/admin/membership-pipeline`, {

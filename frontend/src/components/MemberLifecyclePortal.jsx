@@ -28,6 +28,8 @@ export function MemberLifecyclePortal({
   onOpenLoi,
   onOpenPayment,
   onSubmitFullProfile,
+  /** Refetch pipeline after optional callsign PATCH (Firebase). */
+  onRefreshLifecycle,
 }) {
   const stage = lifecycle?.stage ?? "UNKNOWN";
   const legacyFounder = Boolean(lifecycle?.isLegacyFounderImport);
@@ -207,9 +209,34 @@ export function MemberLifecyclePortal({
               </p>
             </div>
           </div>
+          {lifecycle?.memberIdNo || lifecycle?.alternatePublicHandle ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm text-slate-800">
+              {lifecycle?.memberIdNo ? (
+                <p>
+                  <span className="font-black uppercase tracking-wide text-[#004aad]">Member ID</span>
+                  <span className="ml-2 font-mono font-semibold">{lifecycle.memberIdNo}</span>
+                </p>
+              ) : null}
+              {lifecycle?.alternatePublicHandle ? (
+                <p className={lifecycle?.memberIdNo ? "mt-2" : ""}>
+                  <span className="font-black uppercase tracking-wide text-[#004aad]">Alternate label</span>
+                  <span className="ml-2 font-mono font-semibold">{lifecycle.alternatePublicHandle}</span>
+                  {lifecycle?.callsign ? (
+                    <span className="ml-2 text-xs font-medium text-slate-600">(your callsign)</span>
+                  ) : (
+                    <span className="ml-2 text-xs font-medium text-slate-600">
+                      (default from last name; set an optional callsign in the form)
+                    </span>
+                  )}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <MemberFullProfileForm
             memberEmail={email}
             assignedMemberId={typeof lifecycle?.memberIdNo === "string" ? lifecycle.memberIdNo : ""}
+            assignedCallsign={typeof lifecycle?.callsign === "string" ? lifecycle.callsign : ""}
+            onRefreshLifecycle={onRefreshLifecycle}
             submitting={submitting}
             localError={localError}
             onSubmitSuccess={handleFullSuccess}

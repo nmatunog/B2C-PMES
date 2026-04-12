@@ -116,6 +116,44 @@ export class AuthService {
     throw new UnauthorizedException("Invalid or missing member sync authorization");
   }
 
+  /**
+   * Member-only routes (e.g. optional callsign): Firebase ID token email must match `email`.
+   * When neither `MEMBER_SYNC_SECRET` nor Firebase Admin is configured, skips verification (local dev only).
+   */
+  async assertMemberEmailMatchesFirebaseToken(
+    authorization: string | undefined,
+    emailRaw: string,
+  ): Promise<void> {
+    const normalized = emailRaw.trim().toLowerCase();
+    const expected = String(this.config.get<string>("MEMBER_SYNC_SECRET") ?? "").trim();
+    const hasSecret = Boolean(expected);
+    const hasAdmin = this.isFirebaseAdminConfigured();
+    if (!hasSecret && !hasAdmin) {
+      return;
+    }
+    const bearer = this.extractBearer(authorization);
+    if (!bearer) {
+      throw new UnauthorizedException("Authorization Bearer token required");
+    }
+    if (!hasAdmin) {
+      throw new UnauthorizedException("Firebase Admin is not configured");
+    }
+    const app = this.getFirebaseAdminApp();
+    if (!app) {
+      throw new UnauthorizedException("Firebase Admin is not configured");
+    }
+    try {
+      const decoded = await admin.auth(app).verifyIdToken(bearer);
+      const tokenEmail = decoded.email?.trim().toLowerCase();
+      if (!tokenEmail || tokenEmail !== normalized) {
+        throw new UnauthorizedException("ID token email does not match member email");
+      }
+    } catch (e) {
+      if (e instanceof UnauthorizedException) throw e;
+      throw new UnauthorizedException("Invalid Firebase ID token");
+    }
+  }
+
   async staffLogin(email: string, password: string): Promise<StaffLoginResponse> {
     const normalized = email?.trim().toLowerCase();
     if (!normalized) {

@@ -19,6 +19,8 @@ export function createEmptyMemberProfile() {
     },
     personal: {
       memberIdNo: "",
+      /** Optional; validated server-side. Alternate to default lastname-seq handle. */
+      callsign: "",
       lastName: "",
       firstName: "",
       middleName: "",
