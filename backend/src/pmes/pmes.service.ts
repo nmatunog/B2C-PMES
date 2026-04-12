@@ -41,8 +41,15 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function digitsOnly(s: string | undefined): string {
+function digitsOnly(s: string | null | undefined): string {
   return String(s ?? "").replace(/\D/g, "");
+}
+
+/** Legacy pioneer import stored PH TIN in `memberIdNo` for reclaim — blocks real B2C public ID until moved to `tinNo`. */
+function isNineDigitTinPlaceholderInMemberIdSlot(legacyPioneerImport: boolean, memberIdNo: string | null | undefined): boolean {
+  if (!legacyPioneerImport) return false;
+  const d = digitsOnly(memberIdNo);
+  return d.length === 9 && !/^B2C-/i.test(String(memberIdNo ?? "").trim());
 }
 
 /** Non-digits removed; if more than 9 digits, drop last 3 repeatedly (sheet TINs often end in 000). */
@@ -520,8 +527,15 @@ export class PmesService {
     const zeroTin = "000000000";
     const tinWhere: Prisma.ParticipantWhereInput =
       tinDigits === zeroTin
-        ? { OR: [{ memberIdNo: zeroTin }, { memberIdNo: null }] }
-        : { memberIdNo: tinDigits };
+        ? {
+            OR: [
+              { tinNo: zeroTin },
+              { tinNo: null },
+              { memberIdNo: zeroTin },
+              { memberIdNo: null },
+            ],
+          }
+        : { OR: [{ tinNo: tinDigits }, { memberIdNo: tinDigits }] };
 
     const candidates = await this.prisma.participant.findMany({
       where: {
@@ -581,7 +595,7 @@ export class PmesService {
       const mailing = buildLegacyMailingAddress(row);
       const tinDigitsRaw = normalizeTinDigits(row.tinNo);
       /** Missing TIN on sheet: store nine zeroes so reclaim can match name + 000000000 (email may still be UUID if no TIN for synthesis). */
-      const memberId = (tinDigitsRaw.length > 0 ? tinDigitsRaw : "000000000").slice(0, 80);
+      const tinStored = (tinDigitsRaw.length > 0 ? tinDigitsRaw : "000000000").slice(0, 80);
       const civil = row.civilStatus?.trim().slice(0, 80) ?? null;
 
       const snapshot = buildRegistryImportSnapshot(row, { resolvedEmail: email, dobPlaceholder });
@@ -599,7 +613,8 @@ export class PmesService {
             dob,
             gender,
             civilStatus: civil,
-            memberIdNo: memberId,
+            tinNo: tinStored,
+            memberIdNo: null,
             mailingAddress: mailing,
             legacyPioneerImport: true,
             registryImportSnapshot: snapshot,
@@ -833,6 +848,15 @@ export class PmesService {
     });
     if (byMemberId) return { email: byMemberId.email };
 
+    const tinDigits = digitsOnly(trimmed);
+    if (tinDigits.length === 9) {
+      const byTin = await this.prisma.participant.findFirst({
+        where: { tinNo: { equals: tinDigits, mode: "insensitive" } },
+        select: { email: true },
+      });
+      if (byTin) return { email: byTin.email };
+    }
+
     const lower = trimmed.toLowerCase();
     const byCallsign = await this.prisma.participant.findUnique({
       where: { callsign: lower },
@@ -918,12 +942,28 @@ export class PmesService {
 
   /**
    * Assigns a public member ID when missing: `B2C-{initials}-{cohortYY}-{rand4}`.
-   * Preserves any non-empty existing value (legacy TIN, staff entry, prior assignment).
+   * Preserves any real cooperative ID. Older pioneer imports put **TIN** in `memberIdNo` — those are moved to `tinNo`
+   * so generation can run.
    */
   private async ensureMemberPublicId(
     participant: ParticipantWithRelations,
     profile?: unknown,
   ): Promise<ParticipantWithRelations> {
+    if (isNineDigitTinPlaceholderInMemberIdSlot(participant.legacyPioneerImport, participant.memberIdNo)) {
+      const tin = digitsOnly(participant.memberIdNo);
+      participant = await this.prisma.participant.update({
+        where: { id: participant.id },
+        data: {
+          tinNo: participant.tinNo?.trim() || tin,
+          memberIdNo: null,
+        },
+        include: {
+          pmesRecords: { orderBy: { timestamp: "desc" } },
+          loiSubmission: true,
+        },
+      });
+    }
+
     if (String(participant.memberIdNo ?? "").trim()) {
       return participant;
     }

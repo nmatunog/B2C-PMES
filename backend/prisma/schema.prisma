@@ -50,6 +50,8 @@ model Participant {
   /** Denormalized from full profile for search/list (present address formatted) */
   mailingAddress      String?   @db.Text
   civilStatus           String?
+  /** Normalized digits (typically 9). Legacy roster reclaim; do not confuse with `memberIdNo` (B2C public ID). */
+  tinNo                 String?
   memberIdNo            String?
   /**
    * Optional member-chosen handle (lowercase). Unique when set; authenticated changes via PATCH /pmes/member/callsign.
