@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -55,6 +56,41 @@ export class AuthService {
       }),
     });
     return this.firebaseAdminApp;
+  }
+
+  /**
+   * Updates Firebase Auth primary email only (Postgres updated by caller in the same request).
+   * Use for legacy pioneer / placeholder sign-in emails → real address from the membership form.
+   */
+  async updateFirebasePrimaryEmail(uid: string, newEmailRaw: string): Promise<string> {
+    const newEmail = newEmailRaw.trim().toLowerCase();
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      throw new BadRequestException("Enter a valid email address on the membership form.");
+    }
+    const app = this.getFirebaseAdminApp();
+    if (!app) {
+      throw new BadRequestException("Firebase Admin is not configured; cannot update sign-in email.");
+    }
+    let existing;
+    try {
+      existing = await admin.auth(app).getUserByEmail(newEmail);
+    } catch (e: unknown) {
+      const code = e && typeof e === "object" && "code" in e ? String((e as { code?: string }).code) : "";
+      if (code === "auth/user-not-found") {
+        existing = null;
+      } else {
+        throw e;
+      }
+    }
+    if (existing && existing.uid !== uid) {
+      throw new ConflictException("That email is already used by another Firebase account.");
+    }
+    const row = await this.prisma.participant.findUnique({ where: { email: newEmail } });
+    if (row && row.firebaseUid && row.firebaseUid !== uid) {
+      throw new ConflictException("That email is already registered for another member record.");
+    }
+    await admin.auth(app).updateUser(uid, { email: newEmail });
+    return newEmail;
   }
 
   private extractBearer(authorization: string | undefined): string | null {

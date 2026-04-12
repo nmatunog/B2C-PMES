@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  reload,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
@@ -2786,13 +2787,18 @@ export default function App() {
               onRefreshLifecycle={() => refreshMembershipLifecycle()}
               onSubmitFullProfile={async ({ profileJson, sheetFileName, notes, abortSignal }) => {
                 if (!user?.email) throw new Error("You must be signed in to submit the membership form.");
-                await PmesService.submitFullProfile({
+                /** @type {{ success?: boolean; loginEmailUpdated?: boolean; newLoginEmail?: string }} */
+                const submitResult = await PmesService.submitFullProfile({
                   email: user.email,
                   profileJson,
                   sheetFileName,
                   notes: notes ?? "",
                   signal: abortSignal,
                 });
+                if (submitResult?.loginEmailUpdated && auth.currentUser) {
+                  await reload(auth.currentUser);
+                  await auth.currentUser.getIdToken(true);
+                }
                 const row = await refreshMembershipLifecycle();
                 const r = row && typeof row === "object" ? /** @type {Record<string, unknown>} */ (row) : {};
                 let officialContactEmail = "";
@@ -2805,7 +2811,11 @@ export default function App() {
                 } catch {
                   /* ignore */
                 }
-                const loginEmail = user.email || "";
+                const loginEmail =
+                  (typeof submitResult?.newLoginEmail === "string" && submitResult.newLoginEmail.trim()) ||
+                  auth.currentUser?.email ||
+                  user.email ||
+                  "";
                 setMemberSubmissionAck({
                   memberIdNo: typeof r.memberIdNo === "string" ? r.memberIdNo.trim() : "",
                   memberIdIsProvisional: r.memberIdIsProvisional === true,

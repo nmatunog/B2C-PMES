@@ -3,10 +3,12 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateLoiDto } from "./dto/create-loi.dto";
 import { CreatePmesDto } from "./dto/create-pmes.dto";
@@ -40,6 +42,20 @@ export type MembershipStage =
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+const REGISTRY_PLACEHOLDER_SUFFIX = "@b2c-registry.example.com";
+
+/** Synthetic sign-in emails from legacy roster import (see `buildSynthetic…` in this service). */
+function isPlaceholderRegistryLoginEmail(email: string): boolean {
+  return normalizeEmail(email).endsWith(REGISTRY_PLACEHOLDER_SUFFIX);
+}
+
+function contactEmailFromProfile(profile: unknown): string | null {
+  const root = asObject(profile);
+  const c = root ? asObject(root.contact) : null;
+  const raw = c && typeof c.emailAddress === "string" ? c.emailAddress.trim() : "";
+  return raw || null;
 }
 
 function digitsOnly(s: string | null | undefined): string {
@@ -197,7 +213,12 @@ export type MemberRegistryRow = {
 
 @Injectable()
 export class PmesService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(PmesService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auth: AuthService,
+  ) {}
 
   /** Upsert participant by email, append PMES attempt; returns flat shape for the existing UI. */
   async submitSession(dto: CreatePmesDto) {
@@ -596,37 +617,70 @@ export class PmesService {
 
     const derived = deriveFromMemberProfile(parsed);
 
-    await this.prisma.$transaction(async (tx) => {
-      let lastNameKey = participant.lastNameKey;
-      let lastNameSeq = participant.lastNameSeq;
-      if (slug && lastNameSeq == null) {
-        const row = await tx.lastNameCounter.upsert({
-          where: { lastNameKey: slug },
-          create: { lastNameKey: slug, nextSeq: 1 },
-          update: { nextSeq: { increment: 1 } },
+    const contactEmail = contactEmailFromProfile(parsed);
+    const previousLoginEmail = participant.email;
+    const uid = participant.firebaseUid;
+    let migratedLoginEmail: string | null = null;
+    if (
+      uid &&
+      contactEmail &&
+      (participant.legacyPioneerImport || isPlaceholderRegistryLoginEmail(participant.email)) &&
+      normalizeEmail(contactEmail) !== normalizeEmail(previousLoginEmail)
+    ) {
+      migratedLoginEmail = await this.auth.updateFirebasePrimaryEmail(uid, contactEmail);
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        let lastNameKey = participant.lastNameKey;
+        let lastNameSeq = participant.lastNameSeq;
+        if (slug && lastNameSeq == null) {
+          const row = await tx.lastNameCounter.upsert({
+            where: { lastNameKey: slug },
+            create: { lastNameKey: slug, nextSeq: 1 },
+            update: { nextSeq: { increment: 1 } },
+          });
+          lastNameKey = slug;
+          lastNameSeq = row.nextSeq;
+        }
+
+        await tx.participant.update({
+          where: { id: withMemberId.id },
+          data: {
+            fullProfileCompletedAt: new Date(),
+            fullProfileJson: JSON.stringify(payload),
+            memberProfileSnapshot: parsed as Prisma.InputJsonValue,
+            mailingAddress: derived.mailingAddress.trim() || null,
+            civilStatus: derived.civilStatus.trim() || null,
+            memberIdNo: withMemberId.memberIdNo?.trim() || derived.memberIdNo.trim() || null,
+            ...(dobFromProfile ? { dob: dobFromProfile } : {}),
+            callsign: callsignOut,
+            lastNameKey,
+            lastNameSeq,
+            ...(migratedLoginEmail ? { email: migratedLoginEmail } : {}),
+          },
         });
-        lastNameKey = slug;
-        lastNameSeq = row.nextSeq;
-      }
-
-      await tx.participant.update({
-        where: { id: withMemberId.id },
-        data: {
-          fullProfileCompletedAt: new Date(),
-          fullProfileJson: JSON.stringify(payload),
-          memberProfileSnapshot: parsed as Prisma.InputJsonValue,
-          mailingAddress: derived.mailingAddress.trim() || null,
-          civilStatus: derived.civilStatus.trim() || null,
-          memberIdNo: withMemberId.memberIdNo?.trim() || derived.memberIdNo.trim() || null,
-          ...(dobFromProfile ? { dob: dobFromProfile } : {}),
-          callsign: callsignOut,
-          lastNameKey,
-          lastNameSeq,
-        },
       });
-    });
+    } catch (err) {
+      if (migratedLoginEmail && uid) {
+        try {
+          await this.auth.updateFirebasePrimaryEmail(uid, previousLoginEmail);
+        } catch (rollbackErr) {
+          this.logger.error(
+            "Failed to revert Firebase primary email after full-profile DB failure; participant may need a manual Auth email fix.",
+            rollbackErr instanceof Error ? rollbackErr.stack : String(rollbackErr),
+          );
+        }
+      }
+      throw err;
+    }
 
-    return { success: true };
+    return {
+      success: true,
+      ...(migratedLoginEmail
+        ? { loginEmailUpdated: true as const, newLoginEmail: migratedLoginEmail }
+        : {}),
+    };
   }
 
   /**

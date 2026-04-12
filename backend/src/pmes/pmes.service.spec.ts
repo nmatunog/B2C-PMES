@@ -1,4 +1,5 @@
 import { Test } from "@nestjs/testing";
+import { AuthService } from "../auth/auth.service";
 import { PmesService } from "./pmes.service";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -27,8 +28,13 @@ describe("PmesService", () => {
     const prisma = {
       $transaction: jest.fn((fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
     };
+    const auth = { updateFirebasePrimaryEmail: jest.fn() };
     const module = await Test.createTestingModule({
-      providers: [PmesService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        PmesService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: AuthService, useValue: auth },
+      ],
     }).compile();
     const service = module.get(PmesService);
     const out = await service.submitSession({
