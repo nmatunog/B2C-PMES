@@ -60,11 +60,11 @@ export class PmesController {
     return this.pmes.submitFullProfile(dto);
   }
 
-  /** Public: verify pioneer roster match before Firebase sign-up (same email required). */
+  /** Public: verify pioneer roster match (full name + TIN) before Firebase sign-up; response includes signInEmail. */
   @Post("pioneer/check-eligibility")
   @Throttle({ default: { limit: 15, ttl: 60000 } })
   checkPioneerEligibility(@Body() dto: PioneerEligibilityDto) {
-    return this.pmes.checkPioneerEligibility(dto.email, dto.dob);
+    return this.pmes.checkPioneerEligibility(dto);
   }
 
   @Post("admin/import-legacy-pioneers")

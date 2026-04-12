@@ -427,10 +427,10 @@ export default function LandingPage({
               </>
             )}
             {authUser && isFirebaseConfigured && onPioneerReclaim ? (
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
                 <p className="mb-2 text-xs font-medium leading-snug text-emerald-950">
-                  On the cooperative roster from before this app? Verify your email and birth date, then sign in with the{" "}
-                  <span className="font-bold">same email</span>. Sign out first if you&apos;re using a different address.
+                  On the cooperative roster from before this app? Use your <span className="font-bold">name and TIN</span> on the
+                  next screen — we&apos;ll show the login email to use. Sign out first if you need a different Firebase account.
                 </p>
                 <button
                   type="button"
@@ -982,7 +982,7 @@ export default function LandingPage({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-emerald-950">Already on the cooperative roster?</p>
                   <p className="mt-0.5 text-xs font-medium text-emerald-900/90">
-                    Verify your email and birth date, then sign in with the same email.
+                    We&apos;ll match your name + TIN and show the login email to use (sheet often had no email column).
                   </p>
                 </div>
                 <button

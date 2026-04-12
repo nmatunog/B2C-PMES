@@ -298,11 +298,16 @@ export default function App() {
   });
   const [loiData, setLoiData] = useState({ address: "", occupation: "", employer: "", initialCapital: "", agreement: false });
   const [retrievalData, setRetrievalData] = useState({ email: "", dob: "" });
-  const [pioneerReclaimEmail, setPioneerReclaimEmail] = useState("");
-  const [pioneerReclaimDob, setPioneerReclaimDob] = useState("");
+  const [pioneerReclaimFirstName, setPioneerReclaimFirstName] = useState("");
+  const [pioneerReclaimMiddleName, setPioneerReclaimMiddleName] = useState("");
+  const [pioneerReclaimLastName, setPioneerReclaimLastName] = useState("");
+  const [pioneerReclaimTin, setPioneerReclaimTin] = useState("");
+  /** Set when eligibility succeeds — Firebase account must use this email (synthesized on import if sheet had none). */
+  const [pioneerReclaimSignInEmail, setPioneerReclaimSignInEmail] = useState(/** @type {string | null} */ (null));
   const [pioneerReclaimLoading, setPioneerReclaimLoading] = useState(false);
   const [pioneerReclaimError, setPioneerReclaimError] = useState(null);
   const [pioneerReclaimEligible, setPioneerReclaimEligible] = useState(/** @type {boolean | null} */ (null));
+  const [pioneerReclaimFailReason, setPioneerReclaimFailReason] = useState(/** @type {"not_found" | "ambiguous" | null} */ (null));
   const [legacyImportJson, setLegacyImportJson] = useState(`[
   {
     "lastName": "Academia",
@@ -636,12 +641,10 @@ export default function App() {
       const p = JSON.parse(raw);
       sessionStorage.removeItem("b2c_pioneer_prefill");
       const email = typeof p.email === "string" ? p.email.trim() : "";
-      const dob = typeof p.dob === "string" ? p.dob.trim() : "";
       if (email) {
         setSignUp((s) => ({ ...s, email }));
         setLogIn((l) => ({ ...l, email }));
       }
-      if (dob) setSignUp((s) => ({ ...s, dob }));
     } catch {
       /* ignore */
     }
@@ -1623,8 +1626,9 @@ export default function App() {
               <div>
                 <h1 className="text-2xl font-black uppercase tracking-tight text-[#004aad]">Founding pioneer</h1>
                 <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">
-                  If you were on the roster before this app, confirm the email and the birth date stored for your row. Then use{" "}
-                  <strong>that same email</strong> to sign in or create your account so your digital membership form opens.
+                  Enter your name and TIN <strong>as on the cooperative roster</strong>. We&apos;ll show the login email this
+                  system created for you (the sheet often had no email column). Use that email for Firebase, then complete your
+                  profile including real email and birth date.
                 </p>
               </div>
             </div>
@@ -1641,10 +1645,24 @@ export default function App() {
                     e.preventDefault();
                     setPioneerReclaimError(null);
                     setPioneerReclaimEligible(null);
+                    setPioneerReclaimSignInEmail(null);
+                    setPioneerReclaimFailReason(null);
                     setPioneerReclaimLoading(true);
                     try {
-                      const res = await PmesService.checkPioneerEligibility(pioneerReclaimEmail, pioneerReclaimDob);
-                      setPioneerReclaimEligible(Boolean(res?.eligible));
+                      const res = await PmesService.checkPioneerEligibility({
+                        firstName: pioneerReclaimFirstName,
+                        middleName: pioneerReclaimMiddleName,
+                        lastName: pioneerReclaimLastName,
+                        tinNo: pioneerReclaimTin,
+                      });
+                      const ok = Boolean(res?.eligible);
+                      setPioneerReclaimEligible(ok);
+                      if (ok && typeof res?.signInEmail === "string" && res.signInEmail.trim()) {
+                        setPioneerReclaimSignInEmail(res.signInEmail.trim());
+                      }
+                      if (!ok && res?.reason) {
+                        setPioneerReclaimFailReason(res.reason === "ambiguous" ? "ambiguous" : "not_found");
+                      }
                     } catch (err) {
                       setPioneerReclaimError(err instanceof Error ? err.message : "Verification failed.");
                     } finally {
@@ -1652,54 +1670,71 @@ export default function App() {
                     }
                   }}
                 >
-                  <div>
-                    <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="pioneer-email">
-                      Email on file
-                    </label>
-                    <input
-                      id="pioneer-email"
-                      type="email"
-                      autoComplete="email"
-                      className="input-field w-full"
-                      value={pioneerReclaimEmail}
-                      onChange={(ev) => setPioneerReclaimEmail(ev.target.value)}
-                      required
-                    />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-1">
+                      <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="pioneer-fn">
+                        First name <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        id="pioneer-fn"
+                        type="text"
+                        autoComplete="given-name"
+                        className="input-field w-full"
+                        value={pioneerReclaimFirstName}
+                        onChange={(ev) => setPioneerReclaimFirstName(ev.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="sm:col-span-1">
+                      <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="pioneer-mn">
+                        Middle name
+                      </label>
+                      <input
+                        id="pioneer-mn"
+                        type="text"
+                        autoComplete="additional-name"
+                        className="input-field w-full"
+                        value={pioneerReclaimMiddleName}
+                        onChange={(ev) => setPioneerReclaimMiddleName(ev.target.value)}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="pioneer-ln">
+                        Last name <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        id="pioneer-ln"
+                        type="text"
+                        autoComplete="family-name"
+                        className="input-field w-full"
+                        value={pioneerReclaimLastName}
+                        onChange={(ev) => setPioneerReclaimLastName(ev.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="pioneer-dob">
-                      Date of birth (must match our database)
+                    <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="pioneer-tin">
+                      TIN (Tax Identification Number) <span className="text-red-600">*</span>
                     </label>
-                    <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2.5 text-xs font-medium leading-relaxed text-amber-950">
-                      <strong className="font-black">Roster spreadsheet had no Date of Birth column?</strong> Imports without a{" "}
-                      <code className="rounded bg-white/80 px-1">dob</code> field use the placeholder{" "}
-                      <span className="font-mono font-bold">1900-01-01</span>. Choose{" "}
-                      <span className="font-mono font-bold">January 1, 1900</span> in the calendar below (we verify as ISO{" "}
-                      <span className="font-mono">1900-01-01</span>). Enter your real birthday later in the full membership form.
-                    </div>
                     <p className="mb-2 text-xs font-medium leading-relaxed text-slate-600">
-                      If the office already saved your real DOB for your row, pick that date. The browser may show another{" "}
-                      <em>display</em> style; we still match the same calendar day as{" "}
-                      <span className="font-mono font-bold text-slate-800">YYYY-MM-DD</span> in the roster.
+                      Digits only after we normalize (spaces and dashes OK). Must match the roster import.
                     </p>
                     <input
-                      id="pioneer-dob"
-                      type="date"
-                      autoComplete="bday"
-                      className="input-field w-full font-mono text-slate-900"
-                      value={pioneerReclaimDob}
-                      onChange={(ev) => setPioneerReclaimDob(ev.target.value)}
+                      id="pioneer-tin"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="e.g. 123456789 or 000000000"
+                      className="input-field w-full font-mono"
+                      value={pioneerReclaimTin}
+                      onChange={(ev) => setPioneerReclaimTin(ev.target.value)}
                       required
                     />
-                    {pioneerReclaimDob.trim() ? (
-                      <p className="mt-1.5 text-xs font-semibold text-slate-700" aria-live="polite">
-                        We&apos;ll verify as:{" "}
-                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-slate-900">{pioneerReclaimDob.trim()}</span>
-                      </p>
-                    ) : null}
-                    <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium leading-relaxed text-slate-700">
-                      Staff can correct your DOB in the member record later; until then, use whatever date is stored for your row
-                      (often <span className="font-mono font-bold">1900-01-01</span> when the sheet had no DOB).
+                    <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2 text-xs font-medium leading-relaxed text-amber-950">
+                      <strong className="font-black">No TIN on the sheet?</strong> Enter nine zeroes:{" "}
+                      <span className="font-mono font-bold">000000000</span> — only if your row was imported that way. After
+                      sign-in, update TIN, email, and birth date in your membership profile.
                     </p>
                   </div>
                   {pioneerReclaimError ? (
@@ -1710,11 +1745,18 @@ export default function App() {
                     Check eligibility
                   </button>
                 </form>
-                {pioneerReclaimEligible === true ? (
+                {pioneerReclaimEligible === true && pioneerReclaimSignInEmail ? (
                   <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4">
                     <p className="text-sm font-bold text-emerald-950">
-                      You&apos;re on the pioneer import list and still need the digital profile. Sign in or register with{" "}
-                      <strong>this exact email</strong>.
+                      You&apos;re on the pioneer import list and still need the digital profile. Use this email for Firebase — it
+                      was generated when your row was imported:
+                    </p>
+                    <p className="break-all rounded-xl bg-white px-3 py-2 text-center font-mono text-sm font-black text-emerald-950 shadow-inner">
+                      {pioneerReclaimSignInEmail}
+                    </p>
+                    <p className="text-xs font-medium leading-relaxed text-emerald-900">
+                      After sign-in, open your membership form to add your real email, birth date, and correct TIN if you used
+                      nine zeroes.
                     </p>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <button
@@ -1725,8 +1767,7 @@ export default function App() {
                             sessionStorage.setItem(
                               "b2c_pioneer_prefill",
                               JSON.stringify({
-                                email: pioneerReclaimEmail.trim(),
-                                dob: pioneerReclaimDob.trim(),
+                                email: pioneerReclaimSignInEmail,
                               }),
                             );
                           } catch {
@@ -1747,8 +1788,7 @@ export default function App() {
                             sessionStorage.setItem(
                               "b2c_pioneer_prefill",
                               JSON.stringify({
-                                email: pioneerReclaimEmail.trim(),
-                                dob: pioneerReclaimDob.trim(),
+                                email: pioneerReclaimSignInEmail,
                               }),
                             );
                           } catch {
@@ -1766,10 +1806,9 @@ export default function App() {
                 ) : null}
                 {pioneerReclaimEligible === false ? (
                   <p className="text-sm font-medium leading-relaxed text-slate-600">
-                    We couldn&apos;t match a pioneer row that still needs a profile. Check the email. If the roster had{" "}
-                    <strong>no Date of Birth column</strong>, try <span className="font-mono font-bold">1900-01-01</span> (January
-                    1, 1900). Otherwise use the ISO date we have on file. Contact the cooperative office if needed. If you
-                    already finished the digital form, you won&apos;t see a match here.
+                    {pioneerReclaimFailReason === "ambiguous"
+                      ? "More than one roster row matched. Contact the cooperative office with your name and TIN."
+                      : "We couldn&apos;t match a pioneer row that still needs a profile. Check spelling (including middle name), TIN digits, and use 000000000 only if your import used that placeholder. Contact the office if needed."}
                   </p>
                 ) : null}
               </>
@@ -1779,6 +1818,12 @@ export default function App() {
               onClick={() => {
                 setPioneerReclaimError(null);
                 setPioneerReclaimEligible(null);
+                setPioneerReclaimSignInEmail(null);
+                setPioneerReclaimFailReason(null);
+                setPioneerReclaimFirstName("");
+                setPioneerReclaimMiddleName("");
+                setPioneerReclaimLastName("");
+                setPioneerReclaimTin("");
                 setAppState("landing");
               }}
               className="w-full text-center text-sm font-bold text-slate-500 hover:text-[#004aad]"
@@ -1842,6 +1887,12 @@ export default function App() {
             if (!isFirebaseConfigured) return;
             setPioneerReclaimError(null);
             setPioneerReclaimEligible(null);
+            setPioneerReclaimSignInEmail(null);
+            setPioneerReclaimFailReason(null);
+            setPioneerReclaimFirstName("");
+            setPioneerReclaimMiddleName("");
+            setPioneerReclaimLastName("");
+            setPioneerReclaimTin("");
             setAppState("pioneer_reclaim");
           }}
           onMemberPortal={async () => {
@@ -3067,15 +3118,16 @@ export default function App() {
             <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Legacy pioneer import</h2>
             <p className="mt-1 text-sm font-medium text-slate-600">
               Preload roster members so they can use <strong>Pioneer roster — link your account</strong> on the home menu. Paste a
-              JSON array: you can send the full B2C registry shape (<code className="rounded bg-slate-200 px-1">lastName</code>,{" "}
+              JSON array: full B2C registry shape (<code className="rounded bg-slate-200 px-1">lastName</code>,{" "}
               <code className="rounded bg-slate-200 px-1">firstName</code>, <code className="rounded bg-slate-200 px-1">middleName</code>,{" "}
               <code className="rounded bg-slate-200 px-1">civilStatus</code>, address fields, <code className="rounded bg-slate-200 px-1">tinNo</code>, share amounts,{" "}
-              <code className="rounded bg-slate-200 px-1">religion</code>, optional <code className="rounded bg-slate-200 px-1">sheet</code> for extra columns).{" "}
-              <code className="rounded bg-slate-200 px-1">email</code>, <code className="rounded bg-slate-200 px-1">phone</code>, and{" "}
-              <code className="rounded bg-slate-200 px-1">dob</code> are optional; missing email is synthesized from TIN when possible.{" "}
-              <strong>No DOB column in the sheet?</strong> Omit <code className="rounded bg-slate-200 px-1">dob</code> — the API stores{" "}
-              <code className="rounded bg-slate-200 px-1">1900-01-01</code> so pioneers can reclaim with that date until staff updates the record. Rows are stored with a full snapshot and created at{" "}
-              <strong>AWAITING_FULL_PROFILE</strong>. Export Sheets as TSV and run <code className="rounded bg-slate-200 px-1">node scripts/legacy-import-tsv-to-json.mjs</code> to build JSON.
+              <code className="rounded bg-slate-200 px-1">religion</code>, optional <code className="rounded bg-slate-200 px-1">sheet</code>).{" "}
+              <code className="rounded bg-slate-200 px-1">email</code> / <code className="rounded bg-slate-200 px-1">phone</code> /{" "}
+              <code className="rounded bg-slate-200 px-1">dob</code> optional — missing email is synthesized (often from TIN); missing DOB defaults to{" "}
+              <code className="rounded bg-slate-200 px-1">1900-01-01</code>; missing TIN stores member ID as{" "}
+              <code className="rounded bg-slate-200 px-1">000000000</code>. Members reclaim with <strong>name + TIN</strong> on the public screen; the API returns their
+              sign-in email. Rows are created at <strong>AWAITING_FULL_PROFILE</strong>. Export Sheets as TSV and run{" "}
+              <code className="rounded bg-slate-200 px-1">node scripts/legacy-import-tsv-to-json.mjs</code> to build JSON.
             </p>
             <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm font-semibold text-emerald-950">
               <strong className="font-black">Saving to the database:</strong> the box below is only your draft. Nothing is written to the server until you click{" "}

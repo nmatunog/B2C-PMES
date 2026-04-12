@@ -339,13 +339,18 @@ export const PmesService = {
     return response.json();
   },
 
-  /** Public: roster email + DOB match a legacy-imported pioneer pending digital profile. */
-  async checkPioneerEligibility(email, dob) {
+  /** Public: roster full name + TIN match a legacy-imported pioneer; returns { eligible, signInEmail? }. */
+  async checkPioneerEligibility(payload) {
     if (!useRest()) throw new Error("API required");
     const response = await fetch(`${apiBase()}/pmes/pioneer/check-eligibility`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: String(email || "").trim(), dob: String(dob || "").trim() }),
+      body: JSON.stringify({
+        firstName: String(payload?.firstName ?? "").trim(),
+        middleName: String(payload?.middleName ?? "").trim(),
+        lastName: String(payload?.lastName ?? "").trim(),
+        tinNo: String(payload?.tinNo ?? "").trim(),
+      }),
     });
     if (!response.ok) {
       throw new Error(await parseApiErrorMessage(response));

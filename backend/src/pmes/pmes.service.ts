@@ -6,6 +6,7 @@ import { CreateLoiDto } from "./dto/create-loi.dto";
 import { CreatePmesDto } from "./dto/create-pmes.dto";
 import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import type { ImportLegacyPioneerRowDto } from "./dto/import-legacy-pioneers.dto";
+import type { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
 import { deriveFromMemberProfile, parseFullProfileEnvelope } from "./member-profile.extract";
 import type { LoiSubmission, Participant, PmesRecord } from "@prisma/client";
@@ -44,6 +45,11 @@ function composeLegacyFullName(row: ImportLegacyPioneerRowDto): string | null {
   const l = row.lastName?.trim() ?? "";
   if (!f && !l) return null;
   return [f, m, l].filter(Boolean).join(" ").trim() || null;
+}
+
+/** Lowercase + collapse spaces — compare roster fullName to reclaim form. */
+function normalizeFullNameForMatch(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function resolveLegacyGender(row: ImportLegacyPioneerRowDto): string | null {
@@ -410,25 +416,51 @@ export class PmesService {
   }
 
   /**
-   * Public (throttled): email + DOB match a legacy-imported pioneer row that still needs the digital membership profile.
+   * Public (throttled): full name + TIN match a legacy-imported pioneer row that still needs the digital membership profile.
+   * Returns `signInEmail` (synthesized or from import) for Firebase — roster sheets often had no member email column.
    */
-  async checkPioneerEligibility(emailRaw: string, dobRaw: string) {
-    const email = normalizeEmail(emailRaw);
-    const dob = dobRaw.trim();
-    if (!email || !dob) {
-      throw new BadRequestException("email and dob are required.");
+  async checkPioneerEligibility(dto: PioneerEligibilityDto) {
+    const rowLike: ImportLegacyPioneerRowDto = {
+      firstName: dto.firstName,
+      middleName: dto.middleName,
+      lastName: dto.lastName,
+    };
+    const fullNameInput = composeLegacyFullName(rowLike);
+    if (!fullNameInput || fullNameInput.length < 2) {
+      throw new BadRequestException("firstName and lastName are required.");
     }
-    const p = await this.prisma.participant.findUnique({ where: { email } });
-    if (!p?.legacyPioneerImport) {
-      return { eligible: false as const };
+    const normalizedName = normalizeFullNameForMatch(fullNameInput);
+    const tinDigits = normalizeTinDigits(dto.tinNo);
+    if (!tinDigits.length) {
+      throw new BadRequestException(
+        "TIN is required after normalizing digits (use 000000000 if your roster row had no TIN).",
+      );
     }
-    if (p.dob.trim() !== dob) {
-      return { eligible: false as const };
+
+    const zeroTin = "000000000";
+    const tinWhere: Prisma.ParticipantWhereInput =
+      tinDigits === zeroTin
+        ? { OR: [{ memberIdNo: zeroTin }, { memberIdNo: null }] }
+        : { memberIdNo: tinDigits };
+
+    const candidates = await this.prisma.participant.findMany({
+      where: {
+        legacyPioneerImport: true,
+        fullProfileCompletedAt: null,
+        ...tinWhere,
+      },
+      select: { email: true, fullName: true },
+    });
+
+    const matched = candidates.filter((c) => normalizeFullNameForMatch(c.fullName) === normalizedName);
+
+    if (matched.length === 0) {
+      return { eligible: false as const, reason: "not_found" as const };
     }
-    if (p.fullProfileCompletedAt) {
-      return { eligible: false as const };
+    if (matched.length > 1) {
+      return { eligible: false as const, reason: "ambiguous" as const };
     }
-    return { eligible: true as const };
+    return { eligible: true as const, signInEmail: normalizeEmail(matched[0].email) };
   }
 
   /**
@@ -467,9 +499,10 @@ export class PmesService {
       const phone = row.phone?.trim() && row.phone.trim().length >= 5 ? row.phone.trim().slice(0, 80) : "+639000000000";
 
       const mailing = buildLegacyMailingAddress(row);
-      const tinDigits = normalizeTinDigits(row.tinNo);
+      const tinDigitsRaw = normalizeTinDigits(row.tinNo);
+      /** Missing TIN on sheet: store nine zeroes so reclaim can match name + 000000000 (email may still be UUID if no TIN for synthesis). */
+      const memberId = (tinDigitsRaw.length > 0 ? tinDigitsRaw : "000000000").slice(0, 80);
       const civil = row.civilStatus?.trim().slice(0, 80) ?? null;
-      const memberId = tinDigits.length > 0 ? tinDigits.slice(0, 80) : null;
 
       const snapshot = buildRegistryImportSnapshot(row, { resolvedEmail: email, dobPlaceholder });
 

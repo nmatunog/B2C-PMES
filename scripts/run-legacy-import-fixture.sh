@@ -10,7 +10,7 @@
 #
 # Fixture: scripts/fixtures/b2c-registry-pioneers.import.json (B2C registry scan; 24 rows;
 # missing TIN uses placeholder 000000000; rows sharing that placeholder keep explicit test emails.)
-# No DOB column in the source sheet: omit dob in JSON — API stores 1900-01-01; pioneers reclaim with that date until updated.
+# No DOB column: API stores 1900-01-01. No TIN: API stores memberIdNo 000000000. Pioneers reclaim with name + TIN (UI shows sign-in email).
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
