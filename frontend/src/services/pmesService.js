@@ -369,6 +369,39 @@ export const PmesService = {
     return response.json();
   },
 
+  /**
+   * Superuser only: set or correct cooperative member ID (must be unique; syncs stored profile JSON when present).
+   */
+  async superuserSetMemberId(accessToken, participantId, memberIdNo) {
+    if (!useRest()) throw new Error("API required");
+    const id = String(participantId ?? "").trim();
+    if (!id) throw new Error("Participant id required");
+    const response = await fetch(`${apiBase()}/pmes/admin/participants/${encodeURIComponent(id)}/member-id`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ memberIdNo: String(memberIdNo ?? "").trim() }),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      let detail = text?.trim() || `Update failed (${response.status})`;
+      try {
+        const j = JSON.parse(text);
+        const m = j?.message;
+        if (m != null) {
+          detail = Array.isArray(m) ? m.map((x) => String(x)).join("; ") : String(m);
+        }
+      } catch {
+        /* keep detail */
+      }
+      throw new Error(detail);
+    }
+    if (!text?.trim()) return {};
+    return JSON.parse(text);
+  },
+
   /** Public: roster full name + TIN match a legacy-imported pioneer; returns { eligible, signInEmail? }. */
   async checkPioneerEligibility(payload) {
     if (!useRest()) throw new Error("API required");

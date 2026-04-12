@@ -375,6 +375,8 @@ export default function App() {
   const [registryIncludeAll, setRegistryIncludeAll] = useState(false);
   const [registryLoading, setRegistryLoading] = useState(false);
   const [registryDetail, setRegistryDetail] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const [superuserMemberIdDraft, setSuperuserMemberIdDraft] = useState("");
+  const [superuserMemberIdSaving, setSuperuserMemberIdSaving] = useState(false);
   const audioCache = useRef({});
   const inflightTts = useRef({});
   const currentAudio = useRef(null);
@@ -3151,6 +3153,14 @@ export default function App() {
                                     staffAccessToken,
                                     String(r.participantId),
                                   );
+                                  const d = /** @type {Record<string, unknown>} */ (detail);
+                                  setSuperuserMemberIdDraft(
+                                    String(
+                                      /** @type {Record<string, unknown> | undefined} */ (d.lifecycle)?.memberIdNo ??
+                                        /** @type {Record<string, unknown> | undefined} */ (d.registry)?.memberIdNo ??
+                                        "",
+                                    ),
+                                  );
                                   setRegistryDetail(detail);
                                 } catch {
                                   setRegistryDetail(null);
@@ -3203,7 +3213,10 @@ export default function App() {
               aria-modal="true"
               aria-labelledby="registry-detail-title"
               onClick={(e) => {
-                if (e.target === e.currentTarget) setRegistryDetail(null);
+                if (e.target === e.currentTarget) {
+                  setRegistryDetail(null);
+                  setSuperuserMemberIdDraft("");
+                }
               }}
             >
               <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -3213,7 +3226,10 @@ export default function App() {
                   </h2>
                   <button
                     type="button"
-                    onClick={() => setRegistryDetail(null)}
+                    onClick={() => {
+                      setRegistryDetail(null);
+                      setSuperuserMemberIdDraft("");
+                    }}
                     className="rounded-lg bg-white/20 px-3 py-1.5 text-sm font-bold hover:bg-white/30"
                   >
                     Close
@@ -3229,6 +3245,68 @@ export default function App() {
                         </div>
                       ))}
                     </dl>
+                  ) : null}
+                  {staffRole === "superuser" && /** @type {Record<string, unknown>} */ (registryDetail).registry ? (
+                    <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/90 p-4">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-amber-950">Superuser: member ID</h3>
+                      <p className="mt-1 text-xs font-medium text-amber-950/90">
+                        Correct an auto-generated ID (e.g. wrong birth-year segment). Value must stay unique across all members.
+                      </p>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <label className="min-w-0 flex-1 text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">B2C member ID</span>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-900"
+                            value={superuserMemberIdDraft}
+                            onChange={(e) => setSuperuserMemberIdDraft(e.target.value)}
+                            autoComplete="off"
+                            spellCheck={false}
+                            disabled={superuserMemberIdSaving}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          disabled={superuserMemberIdSaving || !staffAccessToken}
+                          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-2.5 text-xs font-black uppercase text-white hover:bg-amber-800 disabled:opacity-50"
+                          onClick={async () => {
+                            if (!staffAccessToken) return;
+                            const reg = /** @type {Record<string, unknown>} */ (registryDetail).registry;
+                            const pid = reg && reg.participantId != null ? String(reg.participantId) : "";
+                            if (!pid) return;
+                            setSuperuserMemberIdSaving(true);
+                            try {
+                              await PmesService.superuserSetMemberId(
+                                staffAccessToken,
+                                pid,
+                                superuserMemberIdDraft,
+                              );
+                              const detail = await PmesService.fetchParticipantAdminDetail(staffAccessToken, pid);
+                              const d = /** @type {Record<string, unknown>} */ (detail);
+                              setSuperuserMemberIdDraft(
+                                String(
+                                  /** @type {Record<string, unknown> | undefined} */ (d.lifecycle)?.memberIdNo ??
+                                    /** @type {Record<string, unknown> | undefined} */ (d.registry)?.memberIdNo ??
+                                    "",
+                                ),
+                              );
+                              setRegistryDetail(detail);
+                              setAdminToast({ type: "success", message: "Member ID updated." });
+                            } catch (e) {
+                              const msg = e instanceof Error ? e.message : String(e);
+                              setAdminToast({ type: "error", message: msg });
+                            } finally {
+                              setSuperuserMemberIdSaving(false);
+                            }
+                          }}
+                        >
+                          {superuserMemberIdSaving ? (
+                            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                          ) : null}
+                          Save ID
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
                   <h3 className="mt-6 text-xs font-black uppercase tracking-wider text-slate-500">Full membership JSON</h3>
                   <pre className="mt-2 max-h-[min(50vh,28rem)] overflow-auto rounded-xl bg-slate-50 p-3 text-xs leading-relaxed">
@@ -3248,8 +3326,8 @@ export default function App() {
               <code className="rounded bg-slate-200 px-1">religion</code>, optional <code className="rounded bg-slate-200 px-1">sheet</code>).{" "}
               <code className="rounded bg-slate-200 px-1">email</code> / <code className="rounded bg-slate-200 px-1">phone</code> /{" "}
               <code className="rounded bg-slate-200 px-1">dob</code> optional — missing email is synthesized (often from TIN); missing DOB defaults to{" "}
-              <code className="rounded bg-slate-200 px-1">1900-01-01</code>; missing TIN stores member ID as{" "}
-              <code className="rounded bg-slate-200 px-1">000000000</code>. Members reclaim with <strong>name + TIN</strong> on the public screen; the API returns their
+              <code className="rounded bg-slate-200 px-1">1900-01-01</code>; missing TIN is stored as{" "}
+              <code className="rounded bg-slate-200 px-1">000000000</code> on the TIN field (cooperative member ID is assigned separately when the member loads the portal). Members reclaim with <strong>name + TIN</strong> on the public screen; the API returns their
               sign-in email. Rows are created at <strong>AWAITING_FULL_PROFILE</strong>. Export Sheets as TSV and run{" "}
               <code className="rounded bg-slate-200 px-1">node scripts/legacy-import-tsv-to-json.mjs</code> to build JSON.
             </p>

@@ -20,6 +20,7 @@ import { ImportLegacyPioneersDto } from "./dto/import-legacy-pioneers.dto";
 import { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
 import { SetCallsignDto } from "./dto/set-callsign.dto";
 import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
+import { SuperuserSetMemberIdDto } from "./dto/superuser-set-member-id.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
 import { AuthService } from "../auth/auth.service";
 import { StaffJwtGuard } from "../auth/staff-jwt.guard";
@@ -160,6 +161,14 @@ export class PmesController {
   @UseGuards(StaffJwtGuard)
   adminParticipantDetail(@Param("id") id: string) {
     return this.pmes.getParticipantAdminDetail(id);
+  }
+
+  /** Superuser only: replace auto-generated member ID (wrong cohort year, correction, etc.). */
+  @Patch("admin/participants/:id/member-id")
+  @Throttle({ default: { limit: 40, ttl: 60000 } })
+  @UseGuards(StaffJwtGuard, SuperuserGuard)
+  adminSuperuserSetMemberId(@Param("id") id: string, @Body() dto: SuperuserSetMemberIdDto) {
+    return this.pmes.superuserSetParticipantMemberId(id, dto.memberIdNo);
   }
 
   /** Superuser only: delete participant + PMES/LOI (removes one pipeline row). */

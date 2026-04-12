@@ -340,6 +340,101 @@ export class PmesService {
     return { deleted: true, participantId: id };
   }
 
+  /**
+   * Superuser only: replace auto-generated `memberIdNo` (wrong cohort, typo, etc.).
+   * Keeps `memberProfileSnapshot` / `fullProfileJson` personal.memberIdNo in sync when present.
+   */
+  async superuserSetParticipantMemberId(participantId: string, memberIdNoRaw: string) {
+    const id = String(participantId ?? "").trim();
+    if (!id) throw new BadRequestException("participant id is required");
+
+    const normalized = String(memberIdNoRaw ?? "").trim();
+    if (!normalized.length) {
+      throw new BadRequestException("memberIdNo is required");
+    }
+    if (/\s/.test(normalized)) {
+      throw new BadRequestException("memberIdNo must not contain whitespace");
+    }
+
+    const p = await this.prisma.participant.findUnique({
+      where: { id },
+      include: {
+        pmesRecords: { orderBy: { timestamp: "desc" } },
+        loiSubmission: true,
+      },
+    });
+    if (!p) throw new NotFoundException("Participant not found");
+
+    if (normalized.localeCompare(String(p.memberIdNo ?? ""), undefined, { sensitivity: "accent" }) === 0) {
+      return { success: true as const, memberIdNo: normalized, lifecycle: this.toLifecyclePayload(p) };
+    }
+
+    const clashMember = await this.prisma.participant.findFirst({
+      where: {
+        id: { not: id },
+        memberIdNo: { equals: normalized, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (clashMember) {
+      throw new ConflictException("Another participant already uses this member ID.");
+    }
+
+    const lower = normalized.toLowerCase();
+    const clashCallsign = await this.prisma.participant.findFirst({
+      where: {
+        id: { not: id },
+        callsign: lower,
+      },
+      select: { id: true },
+    });
+    if (clashCallsign) {
+      throw new ConflictException("This value matches another member’s callsign; choose a different member ID.");
+    }
+
+    let nextSnapshot: Prisma.InputJsonValue | undefined;
+    if (p.memberProfileSnapshot != null) {
+      const merged = this.mergeMemberIdIntoProfileJson(p.memberProfileSnapshot as unknown, normalized);
+      if (asObject(merged)) {
+        nextSnapshot = merged as Prisma.InputJsonValue;
+      }
+    }
+
+    let nextFullProfileJson: string | undefined;
+    const env = parseFullProfileEnvelope(p.fullProfileJson);
+    if (env && env.profile !== undefined) {
+      const mergedProfile = this.mergeMemberIdIntoProfileJson(env.profile, normalized);
+      nextFullProfileJson = JSON.stringify({ ...env, profile: mergedProfile });
+    }
+
+    const updated = await this.prisma.participant.update({
+      where: { id },
+      data: {
+        memberIdNo: normalized,
+        ...(nextSnapshot !== undefined ? { memberProfileSnapshot: nextSnapshot } : {}),
+        ...(nextFullProfileJson !== undefined ? { fullProfileJson: nextFullProfileJson } : {}),
+      },
+      include: {
+        pmesRecords: { orderBy: { timestamp: "desc" } },
+        loiSubmission: true,
+      },
+    });
+
+    return {
+      success: true as const,
+      memberIdNo: normalized,
+      lifecycle: this.toLifecyclePayload(updated),
+    };
+  }
+
+  private mergeMemberIdIntoProfileJson(profile: unknown, memberIdNo: string): unknown {
+    const root = asObject(profile);
+    if (!root) return profile;
+    const personal = asObject(root.personal) ?? {};
+    personal.memberIdNo = memberIdNo;
+    return { ...root, personal };
+  }
+
   /** Member-facing: derive cooperative membership pipeline from DB */
   async getMembershipLifecycle(emailRaw: string) {
     const email = normalizeEmail(emailRaw);
