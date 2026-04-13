@@ -35,7 +35,7 @@ export default function Home() {
   async function handleAuth(userCredential) {
     const user = userCredential.user;
     const token = await user.getIdToken();
-    const res = await fetch("/api/sync-member", {
+    const res = await fetch("/auth/sync-member", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -76,7 +76,8 @@ export default function Home() {
       <h1 style={{ fontSize: "1.25rem", fontWeight: 800 }}>B2C PMES — Next.js (Edge API)</h1>
       <p style={{ marginTop: "1rem", lineHeight: 1.5 }}>
         Member UI for production lives in <code>frontend/</code>. This page demonstrates Firebase sign-up +{" "}
-        <code>POST /api/sync-member</code> (Neon <code>Participant</code> row per CURSOR_DOCS.md).
+        <code>POST /auth/sync-member</code> (rewrites to <code>/api/auth/sync-member</code>; Neon{" "}
+        <code>Participant</code> row per CURSOR_DOCS.md).
       </p>
 
       <section style={{ marginTop: "1.5rem" }}>
