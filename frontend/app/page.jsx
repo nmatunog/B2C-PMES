@@ -4,6 +4,18 @@ import { useState } from "react";
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
+function getMissingFirebaseClientEnvKeys() {
+  const required = [
+    "NEXT_PUBLIC_FIREBASE_API_KEY",
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+    "NEXT_PUBLIC_FIREBASE_APP_ID",
+  ];
+  return required.filter((k) => !String(process.env[k] ?? "").trim());
+}
+
 function getFirebaseApp() {
   const config = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -25,6 +37,7 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [status, setStatus] = useState("");
+  const missingFirebaseEnv = getMissingFirebaseClientEnvKeys();
 
   /**
    * Runs after Firebase Email/Password sign-up succeeds: persists uid/email/fullName to Neon via Edge API.
@@ -56,7 +69,9 @@ export default function Home() {
     setStatus("");
     const app = getFirebaseApp();
     if (!app) {
-      setStatus("Set NEXT_PUBLIC_FIREBASE_* env vars (see frontend/.env.example naming).");
+      setStatus(
+        `Missing NEXT_PUBLIC Firebase config for this deployment: ${missingFirebaseEnv.join(", ")}`,
+      );
       return;
     }
     try {
