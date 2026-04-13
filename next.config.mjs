@@ -9,6 +9,9 @@ const nextConfig = {
       { source: "/pmes/loi", destination: "/api/pmes/loi" },
       { source: "/pmes/certificate", destination: "/api/pmes/certificate" },
       { source: "/pmes/membership-lifecycle", destination: "/api/pmes/membership-lifecycle" },
+      { source: "/pmes/member/resolve-login-email", destination: "/api/pmes/member/resolve-login-email" },
+      { source: "/pmes/member/callsign", destination: "/api/pmes/member/callsign" },
+      { source: "/pmes/pioneer/check-eligibility", destination: "/api/pmes/pioneer/check-eligibility" },
     ];
   },
 };
