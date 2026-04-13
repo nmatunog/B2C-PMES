@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_PORT="${BACKEND_PORT:-3000}"
-FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+FRONTEND_PORT="${FRONTEND_PORT:-3040}"
 
 # Free a TCP listen port. Retries + SIGKILL so stale Nest/Vite processes cannot block a new dev server
 # (otherwise an old API without newer routes keeps serving and DELETE returns "Cannot DELETE ..." 404).
@@ -44,7 +44,7 @@ trap cleanup INT TERM
 kill_port "$BACKEND_PORT"
 kill_port "$FRONTEND_PORT"
 
-echo "Starting backend (port $BACKEND_PORT) and frontend (port $FRONTEND_PORT)..."
+echo "Starting backend (port $BACKEND_PORT) and Next.js frontend (port $FRONTEND_PORT)..."
 echo "Press Ctrl+C to stop both."
 echo ""
 

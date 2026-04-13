@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
-import { verifyFirebaseIdToken } from "@/lib/firebase-edge";
+import { sql } from "../../../lib/db.js";
+import { verifyFirebaseIdToken } from "../../../lib/firebase-edge";
 
 export const runtime = "edge";
 
