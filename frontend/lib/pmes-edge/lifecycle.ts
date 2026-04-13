@@ -137,13 +137,13 @@ export async function ensureMemberPublicId(sql: Sql, participant: ParticipantWit
     const id = buildMemberPublicId(initials, yy);
     const clash = await sql`
       SELECT id FROM "Participant"
-      WHERE "memberIdNo" = ${id} AND id <> ${p.id}::uuid
+      WHERE "memberIdNo" = ${id} AND id <> ${p.id}
       LIMIT 1
     `;
     if ((clash as { id: string }[]).length > 0) continue;
 
     await sql`
-      UPDATE "Participant" SET "memberIdNo" = ${id} WHERE id = ${p.id}::uuid
+      UPDATE "Participant" SET "memberIdNo" = ${id} WHERE id = ${p.id}
     `;
     const reloaded = await loadParticipantWithRelsById(sql, p.id);
     if (!reloaded) {
