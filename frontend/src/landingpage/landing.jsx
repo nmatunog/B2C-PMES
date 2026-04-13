@@ -7,6 +7,7 @@ import { EarningsSimulator } from "./EarningsSimulator.jsx";
 import { MarketingAuthModal } from "./MarketingAuthModal.jsx";
 import { BylawsModal } from "./BylawsModal.jsx";
 import { LandingFaqAssistant } from "./LandingFaqAssistant.jsx";
+import { ctaPrimary, ctaPrimaryFocus } from "./brandCta.js";
 import { pickRandomActivityMessage } from "./cebuActivityMock.js";
 import { SIGNUP_LIVE_ACTIVITY_KEY } from "../lib/signupLiveActivity.js";
 import {
@@ -424,7 +425,7 @@ export default function LandingPage({
                     setIsMenuOpen(false);
                     openMarketingAuth("login");
                   }}
-                  className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-600/15 transition-all hover:bg-blue-700"
+                  className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold shadow-md ${ctaPrimary} ${ctaPrimaryFocus}`}
                 >
                   <LogIn className="h-5 w-5 shrink-0" />
                   Sign in or register
@@ -530,7 +531,7 @@ export default function LandingPage({
                   setIsMenuOpen(false);
                   continueToPmes();
                 }}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700"
+                className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold shadow-md ${ctaPrimary} ${ctaPrimaryFocus}`}
               >
                 <PlayCircle className="h-5 w-5 shrink-0" aria-hidden />
                 Start or restart PMES
@@ -544,7 +545,7 @@ export default function LandingPage({
                   setIsMenuOpen(false);
                   onJoinUs?.();
                 }}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700"
+                className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold shadow-md ${ctaPrimary} ${ctaPrimaryFocus}`}
               >
                 Continue membership
               </button>
@@ -591,7 +592,7 @@ export default function LandingPage({
       <div className="animate-in fade-in duration-300 fixed inset-0 z-[200] flex flex-col overflow-hidden bg-[#faf9f6]">
         <div className="h-1 w-full shrink-0 bg-stone-200">
           <div
-            className="h-full bg-blue-600 transition-all duration-700 ease-out"
+            className="h-full bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-500 transition-all duration-700 ease-out"
             style={{ width: `${((orientationStep + 1) / orientationContent.length) * 100}%` }}
           />
         </div>
@@ -677,7 +678,7 @@ export default function LandingPage({
                   setOrientationStep(0);
                   openMarketingAuth("signup");
                 }}
-                className="flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-md transition-all hover:bg-blue-700 active:scale-[0.99]"
+                className={`flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl px-6 py-3.5 text-base font-semibold shadow-md active:scale-[0.99] ${ctaPrimary} ${ctaPrimaryFocus}`}
               >
                 <UserPlus className="h-5 w-5 shrink-0" />
                 Create your account
@@ -707,7 +708,7 @@ export default function LandingPage({
                   setOrientationStep(orientationStep + 1);
                 }
               }}
-              className="w-full rounded-2xl bg-blue-600 px-8 py-4 text-base font-semibold text-white shadow-lg transition-all active:scale-[0.99] sm:ml-auto sm:w-auto sm:rounded-full sm:px-10 sm:py-4"
+              className={`w-full rounded-2xl px-8 py-4 text-base font-semibold shadow-lg sm:ml-auto sm:w-auto sm:rounded-full sm:px-10 sm:py-4 ${ctaPrimary} ${ctaPrimaryFocus}`}
             >
               {orientationStep === orientationContent.length - 1 ? "Continue to PMES" : "Continue"}
             </button>
@@ -719,7 +720,7 @@ export default function LandingPage({
   return (
     <div
       id="top"
-      className="relative isolate min-h-screen overflow-x-hidden bg-gradient-to-b from-[#f6f4f0] via-[#f8f7f4] to-[#ebe8e2] pb-24 font-sans text-stone-900 sm:pb-28"
+      className="relative isolate min-h-screen overflow-x-hidden bg-gradient-to-b from-[#f4f6fc] via-[#f8f7f4] to-[#ebe8e2] pb-24 font-sans text-stone-900 sm:pb-28"
     >
       <a
         href="#main-content"
@@ -751,7 +752,7 @@ export default function LandingPage({
           aria-live="polite"
         >
           <div className="flex items-start gap-3 rounded-2xl border border-white/15 bg-slate-950/90 p-3.5 text-white shadow-2xl shadow-blue-950/40 backdrop-blur-2xl backdrop-saturate-150 sm:items-center sm:gap-4 sm:p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-600/30">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 via-blue-600 to-sky-500 shadow-lg shadow-indigo-500/30">
               <Users className="h-5 w-5 text-white" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -833,7 +834,7 @@ export default function LandingPage({
                 joinCta();
                 setIsMenuOpen(false);
               }}
-              className="rounded-full bg-gradient-to-b from-blue-600 to-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:from-blue-500 hover:to-blue-600"
+              className={`rounded-full px-6 py-2.5 text-sm font-bold ${ctaPrimary}`}
             >
               {authUser ? (hidePmesEntry ? "Continue" : "PMES") : "Join us"}
             </button>
@@ -902,7 +903,7 @@ export default function LandingPage({
                   joinCta();
                   setIsMenuOpen(false);
                 }}
-                className="min-h-[48px] rounded-xl bg-gradient-to-b from-blue-600 to-blue-700 py-3 font-bold text-white shadow-lg shadow-blue-600/25"
+                className={`min-h-[48px] rounded-xl py-3 font-bold ${ctaPrimary}`}
               >
                 {authUser ? (hidePmesEntry ? "Continue" : "PMES") : "Join us"}
               </button>
@@ -914,8 +915,9 @@ export default function LandingPage({
       <main id="main-content">
       <section className="mesh-hero relative overflow-hidden pt-[5rem] sm:pt-[5.5rem] lg:pt-[6.25rem]">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-blue-400/25 blur-3xl sm:h-80 sm:w-80" aria-hidden />
-          <div className="absolute -right-16 top-40 h-56 w-56 rounded-full bg-teal-400/20 blur-3xl sm:h-72 sm:w-72" aria-hidden />
+          <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl sm:h-80 sm:w-80" aria-hidden />
+          <div className="absolute -right-16 top-40 h-56 w-56 rounded-full bg-sky-400/22 blur-3xl sm:h-72 sm:w-72" aria-hidden />
+          <div className="absolute left-1/3 top-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-cyan-400/15 blur-3xl" aria-hidden />
         </div>
         <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pb-10 text-center sm:px-6 sm:pb-12 lg:px-8">
           {!isFirebaseConfigured && (
@@ -964,22 +966,25 @@ export default function LandingPage({
           )}
 
           <p className="glass-badge animate-in fade-in slide-in-from-top-2 duration-700 mb-6 inline-flex max-w-md flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full px-4 py-2.5 text-xs font-semibold text-stone-700 sm:mb-8 sm:text-sm">
-            <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" aria-hidden />
+            <ShieldCheck className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />
             <span>CDA-registered co-op</span>
             <span className="text-stone-300" aria-hidden>
               ·
             </span>
             <span>Cebu · member-owned</span>
           </p>
-          <h1 className="mb-5 max-w-3xl text-[2rem] font-extrabold leading-[1.12] tracking-tight text-stone-900 sm:mb-6 sm:text-4xl md:text-5xl lg:max-w-4xl lg:text-[3.25rem]">
+          <h1 className="mb-4 max-w-3xl text-[2rem] font-extrabold leading-[1.12] tracking-tight text-stone-900 sm:mb-5 sm:text-4xl md:text-5xl lg:max-w-4xl lg:text-[3.25rem]">
             Shop smarter,{" "}
-            <span className="bg-gradient-to-r from-blue-600 via-sky-500 to-teal-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-indigo-600 via-sky-500 to-teal-600 bg-clip-text text-transparent">
               together
             </span>
           </h1>
+          <p className="mb-6 max-w-lg text-sm font-semibold leading-snug text-sky-900/75 sm:mb-8 sm:text-base">
+            Free to browse · Member-owned · Join when it feels right
+          </p>
           <p className="mb-10 max-w-xl text-base font-medium leading-relaxed text-stone-600 sm:mb-12 sm:text-lg md:max-w-2xl md:text-xl">
-            We&apos;re a digital-first consumers cooperative in the Visayas — real ownership, fair value, and a community that
-            grows with you. No pressure: explore first, join when you&apos;re ready.
+            We&apos;re a friendly, digital-first co-op in the Visayas — real ownership, fair value, and neighbors building
+            something together. Look around first; there&apos;s no rush to decide.
           </p>
           <div className="mb-10 flex w-full max-w-lg flex-col gap-3 sm:mb-12 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
             <button
@@ -988,7 +993,7 @@ export default function LandingPage({
                 setOrientationStep(0);
                 setOrientationActive(true);
               }}
-              className="group flex min-h-[52px] items-center justify-center gap-3 rounded-2xl bg-gradient-to-b from-blue-600 to-blue-700 px-8 py-3.5 text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all hover:from-blue-500 hover:to-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 sm:min-h-[56px] sm:px-10 sm:text-lg"
+              className={`group flex min-h-[52px] items-center justify-center gap-3 rounded-2xl px-8 py-3.5 text-base font-bold shadow-xl sm:min-h-[56px] sm:px-10 sm:text-lg ${ctaPrimary} ${ctaPrimaryFocus}`}
             >
               <PlayCircle className="h-6 w-6 shrink-0 opacity-95" aria-hidden /> {t.orientationBtn}
             </button>
@@ -1008,7 +1013,7 @@ export default function LandingPage({
                   <button
                     type="button"
                     onClick={() => joinCta()}
-                    className="min-h-[44px] rounded-full bg-gradient-to-b from-stone-800 to-stone-900 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-stone-900/20 transition hover:from-stone-700 hover:to-stone-800"
+                    className="min-h-[44px] rounded-full bg-gradient-to-br from-indigo-800 via-blue-900 to-slate-900 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-950/30 transition hover:from-indigo-700 hover:via-blue-800 hover:to-slate-900"
                   >
                     Create free account
                   </button>
@@ -1067,16 +1072,16 @@ export default function LandingPage({
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "Where we lead", val: "First", sub: "Digital-led co-op in Visayas", icon: <Rocket className="h-5 w-5 text-blue-600" /> },
-              { label: "Registered", val: "CDA", sub: "Since Oct 2023", icon: <ShieldCheck className="h-5 w-5 text-blue-600" /> },
-              { label: "Members", val: totalMembers, sub: `Updated ${formattedYesterday}`, icon: <History className="h-5 w-5 text-blue-600" /> },
-              { label: "Starting share + fee", val: `₱${INITIAL_INVESTMENT}`, sub: "Typical first step (see PMES)", icon: <Building2 className="h-5 w-5 text-blue-600" /> },
+              { label: "Where we lead", val: "First", sub: "Digital-led co-op in Visayas", icon: <Rocket className="h-5 w-5 text-indigo-600" />, iconBg: "from-indigo-50 to-sky-50 ring-indigo-100/90" },
+              { label: "Registered", val: "CDA", sub: "Since Oct 2023", icon: <ShieldCheck className="h-5 w-5 text-blue-600" />, iconBg: "from-blue-50 to-cyan-50 ring-blue-100/90" },
+              { label: "Members", val: totalMembers, sub: `Updated ${formattedYesterday}`, icon: <History className="h-5 w-5 text-sky-600" />, iconBg: "from-sky-50 to-teal-50 ring-sky-100/90" },
+              { label: "Starting share + fee", val: `₱${INITIAL_INVESTMENT}`, sub: "Typical first step (see PMES)", icon: <Building2 className="h-5 w-5 text-cyan-700" />, iconBg: "from-violet-50 to-blue-50 ring-violet-100/85" },
             ].map((s, i) => (
               <div
                 key={i}
                 className="glass-card glass-card-hover flex items-start gap-4 rounded-2xl p-5 sm:p-6"
               >
-                <div className="shrink-0 rounded-xl bg-gradient-to-br from-blue-50 to-sky-50 p-3 ring-1 ring-blue-100/90">{s.icon}</div>
+                <div className={`shrink-0 rounded-xl bg-gradient-to-br p-3 ring-1 ${s.iconBg}`}>{s.icon}</div>
                 <div className="min-w-0 text-left">
                   <p className="mb-0.5 text-xs font-semibold text-stone-600">{s.label}</p>
                   <p className="text-2xl font-extrabold tracking-tight text-stone-950">{s.val}</p>
@@ -1097,7 +1102,7 @@ export default function LandingPage({
           <div className="lg:w-1/2 lg:pt-2">
             <h2 id="path-heading" className="mb-6 text-3xl font-extrabold leading-tight tracking-tight text-white sm:mb-8 sm:text-4xl md:text-5xl">
               Your path to{" "}
-              <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">membership</span>
+              <span className="bg-gradient-to-r from-sky-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">membership</span>
             </h2>
             <p className="mb-8 max-w-lg text-base font-medium leading-relaxed text-stone-300/95 sm:text-lg">
               Three clear steps — we walk you through each one in the app. Take your time; there&apos;s no rush to decide.
@@ -1143,7 +1148,7 @@ export default function LandingPage({
                 <button
                   type="button"
                   onClick={hidePmesEntry ? () => onJoinUs?.() : continueToPmes}
-                  className="group mt-8 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-stone-800 to-stone-950 py-4 text-base font-bold text-white shadow-xl shadow-stone-900/40 transition-all hover:from-stone-700 hover:to-stone-900"
+                  className={`group mt-8 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow-xl ${ctaPrimary} ${ctaPrimaryFocus}`}
                 >
                   {hidePmesEntry ? (
                     <>
@@ -1161,7 +1166,7 @@ export default function LandingPage({
                     <button
                       type="button"
                       onClick={() => joinCta()}
-                      className="group flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-stone-800 to-stone-950 py-3.5 text-base font-bold text-white shadow-xl shadow-stone-900/35 transition-all hover:from-stone-700 hover:to-stone-900 sm:py-4"
+                      className={`group flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-base font-bold shadow-xl sm:py-4 ${ctaPrimary} ${ctaPrimaryFocus}`}
                     >
                       <UserPlus className="h-5 w-5 shrink-0" aria-hidden />
                       Create account
@@ -1204,7 +1209,7 @@ export default function LandingPage({
               Better access, fair ownership, and opportunities for our members — online-first, grounded in Cebu.
             </p>
             <div className="inline-flex items-center gap-2 rounded-xl border border-white/50 bg-white/55 px-3 py-2 text-[11px] font-semibold leading-snug text-stone-600 shadow-sm backdrop-blur-md">
-              <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" aria-hidden /> {t.regNo}
+              <ShieldCheck className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden /> {t.regNo}
             </div>
           </div>
           <div className="space-y-4">

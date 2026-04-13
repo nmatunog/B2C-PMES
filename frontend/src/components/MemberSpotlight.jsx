@@ -1,5 +1,6 @@
 import { MapPin, Plus, ShieldCheck, Star, Users } from "lucide-react";
 import { COOPERATIVE_REGION, PUBLIC_MEMBER_COUNT } from "../constants/cooperativeBrand.js";
+import { ctaPrimary } from "../landingpage/brandCta.js";
 import { VERIFIED_PIONEERS } from "../data/verifiedPioneers.js";
 
 /**
@@ -18,8 +19,8 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
       aria-labelledby="member-spotlight-heading"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -right-20 top-1/4 h-64 w-64 rounded-full bg-blue-400/10 blur-3xl" />
-        <div className="absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-teal-400/8 blur-3xl" />
+        <div className="absolute -right-20 top-1/4 h-64 w-64 rounded-full bg-indigo-400/10 blur-3xl" />
+        <div className="absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-sky-400/10 blur-3xl" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -28,7 +29,7 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
           <div className="max-w-2xl text-left">
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <p className="glass-badge inline-flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-stone-700">
-                <Users className="h-4 w-4 shrink-0 text-blue-600" aria-hidden />
+                <Users className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />
                 Verified pioneers
               </p>
               <LivePulseCebu />
@@ -38,7 +39,7 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
               className="text-3xl font-extrabold leading-[1.1] tracking-tight text-stone-900 sm:text-4xl md:text-5xl"
             >
               Real members,{" "}
-              <span className="bg-gradient-to-r from-blue-600 via-sky-500 to-teal-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-indigo-600 via-sky-500 to-teal-600 bg-clip-text text-transparent">
                 local to Cebu
               </span>
             </h2>
@@ -54,7 +55,7 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
               <p className="mt-1 text-3xl font-extrabold tabular-nums tracking-tight text-stone-900">{memberCount}</p>
               <p className="mt-0.5 text-xs font-semibold text-stone-500">verified members</p>
             </div>
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/25">
+            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${ctaPrimary}`}>
               <Star className="h-7 w-7 fill-current" aria-hidden />
             </div>
           </div>
@@ -68,7 +69,7 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
               className="group flex min-h-[168px] flex-col justify-between rounded-2xl border border-white/60 bg-white/55 p-4 shadow-md shadow-stone-900/[0.04] ring-1 ring-white/70 backdrop-blur-xl transition-all duration-300 hover:border-blue-200/80 hover:bg-white/80 hover:shadow-lg hover:shadow-blue-900/[0.06] sm:min-h-[176px] sm:rounded-3xl sm:p-5"
             >
               <div>
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-blue-100/90 bg-gradient-to-br from-blue-50 to-sky-50 text-xs font-extrabold text-blue-700 shadow-sm transition-colors group-hover:bg-blue-600 group-hover:text-white sm:h-12 sm:w-12">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-indigo-100/90 bg-gradient-to-br from-indigo-50 to-sky-50 text-xs font-extrabold text-indigo-700 shadow-sm transition-colors group-hover:bg-gradient-to-br group-hover:from-indigo-600 group-hover:to-sky-500 group-hover:text-white group-hover:border-transparent sm:h-12 sm:w-12">
                   {member.initials}
                 </div>
                 <p className="text-sm font-bold leading-snug text-stone-900 transition-colors group-hover:text-blue-800">
@@ -98,7 +99,7 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
           <button
             type="button"
             onClick={onJoinClick}
-            className="group relative flex min-h-[168px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-center shadow-xl shadow-blue-900/20 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 sm:min-h-[176px] sm:rounded-3xl sm:p-5"
+            className={`group relative flex min-h-[168px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-indigo-600 via-blue-700 to-sky-800 p-4 text-center shadow-xl shadow-indigo-950/25 transition-all duration-300 hover:scale-[1.02] hover:from-indigo-500 hover:via-blue-600 hover:to-sky-700 hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 sm:min-h-[176px] sm:rounded-3xl sm:p-5`}
           >
             <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
             <span className="relative z-10 mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 text-white backdrop-blur-sm transition-transform duration-500 group-hover:rotate-90 sm:h-12 sm:w-12">

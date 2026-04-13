@@ -5,6 +5,7 @@ import {
   EST_REFUND_RATE,
   computeEarningsProjection,
 } from "../lib/earningsProjection.js";
+import { ctaPrimary, ctaPrimaryFocus } from "./brandCta.js";
 
 /**
  * Illustrative member-value calculator: same logic as `earningsimulator/earningsdashboard.jsx`
@@ -153,7 +154,7 @@ export function EarningsSimulator({ onJoinClick }) {
                 <button
                   type="button"
                   onClick={onJoinClick}
-                  className="group mt-8 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-blue-600 to-blue-700 px-6 py-4 text-base font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:from-blue-500 hover:to-blue-600"
+                  className={`group mt-8 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-bold shadow-lg ${ctaPrimary} ${ctaPrimaryFocus}`}
                 >
                   Join us
                   <ArrowUpRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />

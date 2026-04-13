@@ -4,6 +4,7 @@ import { Loader2, LogIn, UserPlus, X } from "lucide-react";
 import { auth, isFirebaseConfigured } from "../services/firebase.js";
 import { signupWithEmailPasswordAndNeonSync } from "../services/memberSignupNeon.js";
 import { resolveFirebaseLoginEmail } from "../services/resolveFirebaseLoginEmail.js";
+import { ctaPrimary, ctaPrimaryFocus } from "./brandCta.js";
 
 function firebaseAuthMessage(code) {
   switch (code) {
@@ -137,7 +138,7 @@ export function MarketingAuthModal({
         </button>
 
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-600/20">
+          <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-md ${ctaPrimary}`}>
             {isSignup ? <UserPlus className="h-7 w-7" aria-hidden /> : <LogIn className="h-7 w-7" aria-hidden />}
           </div>
           <h2 id={`${formId}-title`} className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
@@ -236,7 +237,7 @@ export function MarketingAuthModal({
           <button
             type="submit"
             disabled={loading}
-            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-blue-600 to-blue-700 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:from-blue-500 hover:to-blue-600 disabled:opacity-70"
+            className={`flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-base font-bold shadow-lg disabled:opacity-70 ${ctaPrimary} ${ctaPrimaryFocus}`}
           >
             {loading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : null}
             {isSignup ? "Create account & continue" : "Sign in"}
