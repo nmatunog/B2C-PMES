@@ -19,6 +19,11 @@ frontend/dist/
 backend/dist/
 .next/
 out/
+frontend/.open-next/
+.open-next/
+wrangler.state
+frontend/.dev.vars
+frontend/.wrangler/
 
 # Logs and caches
 npm-debug.log*

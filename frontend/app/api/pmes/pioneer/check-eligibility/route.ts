@@ -7,8 +7,6 @@ import {
 } from "@/lib/pmes-edge/pioneer";
 import { normalizeEmail } from "@/lib/pmes-edge/norm";
 
-export const runtime = "edge";
-
 type Body = {
   firstName?: string;
   middleName?: string;

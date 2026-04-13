@@ -8,8 +8,6 @@ import {
 import { normalizeEmail } from "@/lib/pmes-edge/norm";
 import { loadParticipantWithRelsByEmail } from "@/lib/pmes-edge/queries";
 
-export const runtime = "edge";
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const raw = String(searchParams.get("email") ?? "").trim();

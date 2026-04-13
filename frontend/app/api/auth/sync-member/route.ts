@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { verifyFirebaseIdToken } from "@/lib/firebase-edge";
 
-export const runtime = "edge";
-
 type SyncBody = {
   uid?: string;
   email?: string;

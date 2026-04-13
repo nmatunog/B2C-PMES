@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { digitsOnly, normalizeEmail } from "@/lib/pmes-edge/norm";
 
-export const runtime = "edge";
-
 /**
  * GET ?login= — same behavior as Nest `resolveLoginEmailForFirebase`.
  */

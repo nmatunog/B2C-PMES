@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateLandingChatReply, type LandingChatLanguage } from "@/lib/ai/landing-chat-gemini";
 
-export const runtime = "edge";
-
 /** In-process cache (best-effort; Edge isolates may not persist long). */
 const cache = new Map<string, { text: string }>();
 const CACHE_MAX = 48;

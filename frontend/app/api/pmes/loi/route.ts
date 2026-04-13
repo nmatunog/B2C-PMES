@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { normalizeEmail } from "@/lib/pmes-edge/norm";
 
-export const runtime = "edge";
-
 type Body = {
   email?: string;
   address?: string;

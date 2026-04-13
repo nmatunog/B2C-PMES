@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { normalizeEmail } from "@/lib/pmes-edge/norm";
 
-export const runtime = "edge";
-
 function toIso(d: unknown): string {
   if (d instanceof Date) return d.toISOString();
   if (typeof d === "string") return d;

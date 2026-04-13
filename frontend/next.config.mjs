@@ -1,3 +1,5 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /** Same URL path as Nest (`POST /auth/sync-member`) so the Vite client does not need changes. */
@@ -16,5 +18,7 @@ const nextConfig = {
     ];
   },
 };
+
+initOpenNextCloudflareForDev();
 
 export default nextConfig;

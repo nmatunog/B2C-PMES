@@ -5,8 +5,6 @@ import { validateAndNormalizeCallsignInput } from "@/lib/pmes-edge/callsign-vali
 import { assertMemberEmailMatchesFirebaseToken } from "@/lib/pmes-edge/member-bearer";
 import { normalizeEmail } from "@/lib/pmes-edge/norm";
 
-export const runtime = "edge";
-
 type Body = {
   email?: string;
   callsign?: string | null;
