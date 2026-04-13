@@ -2,9 +2,9 @@
 # One-time per clone: origin → dev (daily work + auto-push), production → canonical prod repo.
 #
 # Typical order:
-#   1) Create empty repo B2C-PMES-dev on GitHub (no README).
-#   2) bash scripts/github/push-initial-to-dev.sh
-#   3) bash scripts/github/switch-origin-to-dev.sh
+#   - Create empty repo B2C-PMES-dev on GitHub (no README).
+#   - bash scripts/github/bootstrap-dev-remotes.sh
+#     (or push-initial-to-dev.sh then switch-origin-to-dev.sh)
 #
 # Usage:
 #   bash scripts/github/switch-origin-to-dev.sh

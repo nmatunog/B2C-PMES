@@ -15,21 +15,24 @@ export DEV_REMOTE_URL='https://github.com/ORG/B2C-PMES-dev.git'
 1. GitHub → **New repository** → name e.g. `B2C-PMES-dev`.
 2. **Do not** add README, `.gitignore`, or license (keep it empty).
 
-## One-time: mirror this repo into dev
+## One-time: dev remote + switch `origin` to dev
 
-From your existing clone (with `origin` still pointing at production):
+From your existing clone (with `origin` still pointing at production), run **one** of these.
+
+**Option A — single command (recommended):**
+
+```bash
+bash scripts/github/bootstrap-dev-remotes.sh
+```
+
+**Option B — two steps** (paste **only** the `bash ...` lines; lines starting with `#` are comments — if your paste drops the `#`, zsh will error on the `)`):
 
 ```bash
 bash scripts/github/push-initial-to-dev.sh
-```
-
-This adds remote `dev` and pushes all branches and tags.
-
-## One-time: make `origin` = dev (so pull/push/auto-push hit dev)
-
-```bash
 bash scripts/github/switch-origin-to-dev.sh
 ```
+
+This adds remote `dev`, pushes branches/tags, then renames remotes so `origin` = dev and `production` = prod.
 
 After this:
 
