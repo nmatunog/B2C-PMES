@@ -6,6 +6,7 @@ import {
   LANDING_FAQ_ITEMS,
   matchLandingFaq,
 } from "./landingFaqData.js";
+import { ctaPrimary, ctaPrimaryFocus, faqHeaderBar, faqUserBubble } from "./brandCta.js";
 
 const hasApiBase = () => Boolean((import.meta.env.VITE_API_BASE_URL || "").trim());
 
@@ -142,12 +143,12 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
         }`}
         aria-hidden={!open}
       >
-        <div className="flex shrink-0 items-start justify-between gap-2 border-b border-stone-100 bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-white">
+        <div className={`flex shrink-0 items-start justify-between gap-2 border-b border-white/10 px-4 py-3.5 text-white shadow-inner shadow-black/5 ${faqHeaderBar}`}>
           <div className="min-w-0">
             <h2 id={`${panelId}-title`} className="text-sm font-bold leading-tight">
               {strings.title}
             </h2>
-            <p className="mt-0.5 text-[11px] font-medium leading-snug text-blue-100">{strings.subtitle}</p>
+            <p className="mt-0.5 text-[11px] font-medium leading-snug text-sky-100/95">{strings.subtitle}</p>
           </div>
           <button
             type="button"
@@ -171,7 +172,7 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
               <div
                 className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 ${
                   m.role === "user"
-                    ? "bg-blue-600 text-[14px] font-medium leading-relaxed text-white"
+                    ? `text-[14px] font-medium leading-relaxed ${faqUserBubble}`
                     : "bg-stone-100 text-stone-800"
                 }`}
               >
@@ -188,13 +189,13 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
 
         <div className="shrink-0 border-t border-stone-100 bg-stone-50/80 px-3 py-2">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-stone-500">{strings.chipHint}</p>
-          <div className="mb-3 flex max-h-[5.5rem] flex-wrap gap-1.5 overflow-y-auto">
+          <div className="mb-3 flex gap-2 overflow-x-auto overflow-y-hidden pb-1 [-webkit-overflow-scrolling:touch]">
             {LANDING_FAQ_ITEMS.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handlePickFaq(item)}
-                className="line-clamp-2 max-w-full rounded-full border border-stone-200 bg-white px-2.5 py-1 text-left text-[11px] font-semibold leading-snug text-stone-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-900"
+                className="line-clamp-2 min-h-[48px] max-w-[min(100%,14rem)] shrink-0 rounded-xl border border-indigo-100/90 bg-gradient-to-br from-white to-sky-50/80 px-3.5 py-2.5 text-left text-[11px] font-semibold leading-snug text-indigo-950 shadow-sm transition-colors hover:border-sky-300 hover:from-sky-50 hover:to-cyan-50/80 hover:text-indigo-950"
               >
                 {questionForItem(item)}
               </button>
@@ -207,7 +208,7 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
                 onOpenBylaws();
                 setOpen(false);
               }}
-              className="mb-2 w-full rounded-xl border border-stone-200 bg-white py-2 text-center text-xs font-semibold text-stone-700 transition-colors hover:border-blue-400 hover:text-blue-800"
+              className="mb-2 w-full rounded-xl border border-indigo-100 bg-white py-2.5 text-center text-xs font-semibold text-indigo-900 transition-colors hover:border-sky-400 hover:bg-sky-50/80 hover:text-indigo-950"
             >
               {lang === "ceb" ? "Tan-awa ang primary By-Laws" : "Open primary By-Laws"}
             </button>
@@ -229,17 +230,17 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
               }}
               placeholder={strings.placeholder}
               disabled={aiLoading}
-              className="min-h-[44px] flex-1 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-[48px] flex-1 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60"
               autoComplete="off"
             />
             <button
               type="button"
               onClick={() => void handleSend()}
               disabled={aiLoading}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-70 ${ctaPrimary} ${ctaPrimaryFocus}`}
               aria-label={strings.send}
             >
-              {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
+              {aiLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
             </button>
           </div>
         </div>
@@ -249,7 +250,7 @@ export function LandingFaqAssistant({ language = "en", onOpenBylaws }) {
         ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/35 transition-transform hover:scale-105 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+        className={`pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full text-white shadow-xl shadow-indigo-900/25 transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${ctaPrimary} ${ctaPrimaryFocus}`}
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={open ? strings.closeLabel : strings.openLabel}

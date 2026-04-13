@@ -7,7 +7,7 @@ import { EarningsSimulator } from "./EarningsSimulator.jsx";
 import { MarketingAuthModal } from "./MarketingAuthModal.jsx";
 import { BylawsModal } from "./BylawsModal.jsx";
 import { LandingFaqAssistant } from "./LandingFaqAssistant.jsx";
-import { ctaPrimary, ctaPrimaryFocus } from "./brandCta.js";
+import { ctaOutlineLight, ctaPrimary, ctaPrimaryFocus, ctaSecondary, ctaSecondaryFocus } from "./brandCta.js";
 import { pickRandomActivityMessage } from "./cebuActivityMock.js";
 import { SIGNUP_LIVE_ACTIVITY_KEY } from "../lib/signupLiveActivity.js";
 import {
@@ -986,41 +986,41 @@ export default function LandingPage({
             We&apos;re a friendly, digital-first co-op in the Visayas — real ownership, fair value, and neighbors building
             something together. Look around first; there&apos;s no rush to decide.
           </p>
-          <div className="mb-10 flex w-full max-w-lg flex-col gap-3 sm:mb-12 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
+          <div className="mb-10 flex w-full max-w-3xl flex-row flex-wrap items-stretch justify-center gap-3 sm:mb-12 sm:gap-4">
             <button
               type="button"
               onClick={() => {
                 setOrientationStep(0);
                 setOrientationActive(true);
               }}
-              className={`group flex min-h-[52px] items-center justify-center gap-3 rounded-2xl px-8 py-3.5 text-base font-bold shadow-xl sm:min-h-[56px] sm:px-10 sm:text-lg ${ctaPrimary} ${ctaPrimaryFocus}`}
+              className={`group flex min-h-[56px] min-w-[min(100%,11rem)] flex-1 items-center justify-center gap-3 rounded-2xl px-7 py-4 text-base font-bold shadow-xl sm:min-h-[60px] sm:min-w-[220px] sm:flex-none sm:px-10 sm:text-lg ${ctaPrimary} ${ctaPrimaryFocus}`}
             >
-              <PlayCircle className="h-6 w-6 shrink-0 opacity-95" aria-hidden /> {t.orientationBtn}
+              <PlayCircle className="h-7 w-7 shrink-0 opacity-95" aria-hidden /> {t.orientationBtn}
             </button>
             <button
               type="button"
               onClick={() => document.getElementById("at-a-glance")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="glass-cta-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-2xl px-8 py-3.5 text-base font-bold text-stone-800 transition-all hover:bg-white/60 sm:min-h-[56px] sm:px-10 sm:text-lg"
+              className={`flex min-h-[56px] min-w-[min(100%,11rem)] flex-1 items-center justify-center gap-2 rounded-2xl px-7 py-4 text-base font-bold shadow-xl sm:min-h-[60px] sm:min-w-[220px] sm:flex-none sm:px-10 sm:text-lg ${ctaSecondary} ${ctaSecondaryFocus}`}
             >
               {t.shopBtn}
             </button>
           </div>
           <div className="w-full">
             {!authUser ? (
-              <div className="glass-card mx-auto mb-0 flex max-w-md flex-col items-center gap-3 rounded-2xl px-4 py-4 sm:max-w-none sm:flex-row sm:justify-center sm:gap-6 sm:px-6 sm:py-4">
-                <p className="text-sm font-medium text-stone-700">Thinking about PMES?</p>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
+              <div className="glass-card mx-auto mb-0 flex max-w-4xl flex-col items-center gap-4 rounded-2xl px-4 py-5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-8 sm:gap-y-3 sm:px-6 sm:py-5">
+                <p className="w-full text-center text-sm font-semibold text-stone-700 sm:w-auto sm:text-left">Thinking about PMES?</p>
+                <div className="flex w-full max-w-xl flex-row flex-wrap items-stretch justify-center gap-3 sm:w-auto sm:flex-nowrap sm:gap-4">
                   <button
                     type="button"
                     onClick={() => joinCta()}
-                    className="min-h-[44px] rounded-full bg-gradient-to-br from-indigo-800 via-blue-900 to-slate-900 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-950/30 transition hover:from-indigo-700 hover:via-blue-800 hover:to-slate-900"
+                    className={`min-h-[52px] min-w-[min(100%,10.5rem)] flex-1 rounded-2xl px-7 py-3 text-base font-bold sm:min-w-[200px] sm:flex-none sm:px-8 ${ctaPrimary} ${ctaPrimaryFocus}`}
                   >
                     Create free account
                   </button>
                   <button
                     type="button"
                     onClick={() => loginCta()}
-                    className="min-h-[44px] rounded-full border border-white/60 bg-white/50 px-6 py-2.5 text-sm font-bold text-stone-800 shadow-sm backdrop-blur-sm transition hover:bg-white/70"
+                    className={`min-h-[52px] min-w-[min(100%,10.5rem)] flex-1 rounded-2xl px-7 py-3 text-base font-bold sm:min-w-[200px] sm:flex-none sm:px-8 ${ctaOutlineLight} ${ctaPrimaryFocus}`}
                   >
                     I already have one
                   </button>
