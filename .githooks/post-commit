@@ -12,10 +12,13 @@ git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
 
 branch=$(git symbolic-ref -q --short HEAD) || exit 0
 
+# Default 'origin' — after scripts/github/switch-origin-to-dev.sh, origin is the dev repo.
+remote="${GIT_AUTOPUSH_REMOTE:-origin}"
+
 if git rev-parse '@{u}' >/dev/null 2>&1; then
-  git push || echo "post-commit: git push failed (offline or remote rejected)." >&2
+  git push "$remote" || echo "post-commit: git push $remote failed (offline or remote rejected)." >&2
 else
-  git push -u origin "$branch" || echo "post-commit: git push -u failed." >&2
+  git push -u "$remote" "$branch" || echo "post-commit: git push -u $remote failed." >&2
 fi
 
 exit 0
