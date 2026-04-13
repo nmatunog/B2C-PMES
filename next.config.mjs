@@ -3,6 +3,7 @@ const nextConfig = {
   /** Same URL path as Nest (`POST /auth/sync-member`) so the Vite client does not need changes. */
   async rewrites() {
     return [
+      { source: "/ai/landing-chat", destination: "/api/ai/landing-chat" },
       { source: "/auth/sync-member", destination: "/api/auth/sync-member" },
       { source: "/health", destination: "/api/health" },
       { source: "/pmes/submit", destination: "/api/pmes/submit" },
