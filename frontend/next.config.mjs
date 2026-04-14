@@ -17,8 +17,13 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: "/ai/landing-chat", destination: "/api/ai/landing-chat" },
+      { source: "/auth/admin/login", destination: "/api/auth/admin/login" },
+      { source: "/auth/staff/admins", destination: "/api/auth/staff/admins" },
+      { source: "/auth/staff/password", destination: "/api/auth/staff/password" },
       { source: "/auth/sync-member", destination: "/api/auth/sync-member" },
       { source: "/health", destination: "/api/health" },
+      { source: "/pmes/admin/records", destination: "/api/pmes/admin/records" },
+      { source: "/pmes/admin/records/:path*", destination: "/api/pmes/admin/records/:path*" },
       { source: "/pmes/submit", destination: "/api/pmes/submit" },
       { source: "/pmes/loi", destination: "/api/pmes/loi" },
       { source: "/pmes/certificate", destination: "/api/pmes/certificate" },

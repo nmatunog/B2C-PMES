@@ -1,0 +1,56 @@
+import { jwtVerify, SignJWT } from "jose";
+import { NextResponse } from "next/server";
+
+export type StaffRoleJwt = "admin" | "superuser";
+export type StaffJwtPayload = { sub: string; role: StaffRoleJwt };
+
+const enc = new TextEncoder();
+
+function jwtSecret(): Uint8Array {
+  const secret = String(process.env.ADMIN_JWT_SECRET ?? "").trim();
+  if (!secret) {
+    throw new Error("ADMIN_JWT_SECRET is not configured");
+  }
+  return enc.encode(secret);
+}
+
+export async function signStaffToken(payload: StaffJwtPayload): Promise<string> {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("8h")
+    .sign(jwtSecret());
+}
+
+export async function verifyStaffToken(token: string): Promise<StaffJwtPayload> {
+  const { payload } = await jwtVerify(token, jwtSecret());
+  const role = payload?.role;
+  const sub = payload?.sub;
+  if ((role !== "admin" && role !== "superuser") || typeof sub !== "string" || !sub.trim()) {
+    throw new Error("Invalid staff token");
+  }
+  return { sub, role };
+}
+
+function extractBearerToken(request: Request): string | null {
+  const authorization = String(request.headers.get("authorization") ?? "").trim();
+  if (!authorization.toLowerCase().startsWith("bearer ")) return null;
+  const token = authorization.slice(7).trim();
+  return token || null;
+}
+
+export async function requireStaff(request: Request): Promise<StaffJwtPayload> {
+  const token = extractBearerToken(request);
+  if (!token) {
+    throw new Error("Missing Bearer token — sign in via POST /auth/admin/login");
+  }
+  return verifyStaffToken(token);
+}
+
+export function unauthorized(message: string) {
+  return NextResponse.json({ message, statusCode: 401 }, { status: 401 });
+}
+
+export function forbidden(message: string) {
+  return NextResponse.json({ message, statusCode: 403 }, { status: 403 });
+}

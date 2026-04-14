@@ -28,6 +28,7 @@
   "dependencies": {
     "@jobuntux/psgc": "^0.2.1",
     "@neondatabase/serverless": "^1.0.2",
+    "bcryptjs": "^3.0.3",
     "firebase": "^12.11.0",
     "jose": "^5.9.6",
     "lucide-react": "^1.8.0",

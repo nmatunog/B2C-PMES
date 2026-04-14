@@ -25,7 +25,7 @@ export const config = {
     "/api/:path*",
     "/pmes/:path*",
     "/health",
-    "/auth/sync-member",
+    "/auth/:path*",
     "/ai/:path*",
   ],
 };
