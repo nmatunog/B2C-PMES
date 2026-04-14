@@ -225,6 +225,22 @@ export const PmesService = {
     return response.json();
   },
 
+  async changeOwnStaffPassword(accessToken, currentPassword, newPassword) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/auth/staff/password`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
   /** Cooperative membership pipeline (PostgreSQL participant row). */
   async fetchMembershipLifecycle(email) {
     if (!useRest() || !String(email || "").trim()) return null;

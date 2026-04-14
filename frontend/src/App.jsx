@@ -352,6 +352,9 @@ export default function App() {
   const [managedStaffAdmins, setManagedStaffAdmins] = useState([]);
   const [newStaffAdmin, setNewStaffAdmin] = useState({ email: "", password: "" });
   const [staffAdminError, setStaffAdminError] = useState(null);
+  const [staffPasswordForm, setStaffPasswordForm] = useState({ currentPassword: "", newPassword: "" });
+  const [staffPasswordError, setStaffPasswordError] = useState(null);
+  const [staffPasswordSuccess, setStaffPasswordSuccess] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [openCardIndex, setOpenCardIndex] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -938,6 +941,9 @@ export default function App() {
     setManagedStaffAdmins([]);
     setNewStaffAdmin({ email: "", password: "" });
     setStaffAdminError(null);
+    setStaffPasswordForm({ currentPassword: "", newPassword: "" });
+    setStaffPasswordError(null);
+    setStaffPasswordSuccess(null);
     clearStaffSession();
     setAppState("admin_login");
   };
@@ -992,6 +998,29 @@ export default function App() {
       setManagedStaffAdmins(Array.isArray(admins) ? admins : []);
     } catch (e) {
       setStaffAdminError(e instanceof Error ? e.message : "Could not create admin.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangeStaffPasswordSubmit = async (event) => {
+    event.preventDefault();
+    if (!staffAccessToken) return;
+    setStaffPasswordError(null);
+    setStaffPasswordSuccess(null);
+    const currentPassword = String(staffPasswordForm.currentPassword ?? "");
+    const newPassword = String(staffPasswordForm.newPassword ?? "");
+    if (currentPassword.length < 8 || newPassword.length < 8) {
+      setStaffPasswordError("Current and new password must both be at least 8 characters.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await PmesService.changeOwnStaffPassword(staffAccessToken, currentPassword, newPassword);
+      setStaffPasswordForm({ currentPassword: "", newPassword: "" });
+      setStaffPasswordSuccess("Password updated successfully.");
+    } catch (e) {
+      setStaffPasswordError(e instanceof Error ? e.message : "Could not update password.");
     } finally {
       setLoading(false);
     }
@@ -3155,6 +3184,9 @@ export default function App() {
                 setManagedStaffAdmins([]);
                 setNewStaffAdmin({ email: "", password: "" });
                 setStaffAdminError(null);
+                setStaffPasswordForm({ currentPassword: "", newPassword: "" });
+                setStaffPasswordError(null);
+                setStaffPasswordSuccess(null);
                 setDeletingMasterListId(null);
                 setDeletingPipelineParticipantId(null);
                 clearStaffSession();
@@ -3164,6 +3196,69 @@ export default function App() {
             >
               Logout
             </button>
+          </div>
+          <div className="border-b border-slate-200 bg-slate-50 px-6 py-8 lg:px-10">
+            <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Staff password</h2>
+            <p className="mt-1 text-sm font-medium text-slate-600">
+              Change your own admin/superuser password from here.
+            </p>
+            {staffPasswordError ? (
+              <div className="mt-4 rounded-2xl bg-red-50 p-4 text-center text-sm font-bold text-red-800">
+                {staffPasswordError}
+              </div>
+            ) : null}
+            {staffPasswordSuccess ? (
+              <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-center text-sm font-bold text-emerald-800">
+                {staffPasswordSuccess}
+              </div>
+            ) : null}
+            <form onSubmit={handleChangeStaffPasswordSubmit} className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
+              <div className="min-w-0 flex-1">
+                <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="staff-current-password">
+                  Current password
+                </label>
+                <input
+                  id="staff-current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  className="input-field w-full"
+                  placeholder="Current password"
+                  value={staffPasswordForm.currentPassword}
+                  onChange={(e) => {
+                    setStaffPasswordError(null);
+                    setStaffPasswordSuccess(null);
+                    setStaffPasswordForm((s) => ({ ...s, currentPassword: e.target.value }));
+                  }}
+                  minLength={8}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500" htmlFor="staff-new-password">
+                  New password
+                </label>
+                <input
+                  id="staff-new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  className="input-field w-full"
+                  placeholder="Min. 8 characters"
+                  value={staffPasswordForm.newPassword}
+                  onChange={(e) => {
+                    setStaffPasswordError(null);
+                    setStaffPasswordSuccess(null);
+                    setStaffPasswordForm((s) => ({ ...s, newPassword: e.target.value }));
+                  }}
+                  minLength={8}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading || !staffAccessToken}
+                className="btn-primary inline-flex shrink-0 items-center justify-center gap-2 px-8 py-4 font-black lg:self-stretch"
+              >
+                Update password
+              </button>
+            </form>
           </div>
           {staffRole === "superuser" ? (
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-8 lg:px-10">

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Headers, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { AuthService } from "./auth.service";
 import { AdminCredentialsDto } from "./dto/admin-credentials.dto";
+import { ChangeStaffPasswordDto } from "./dto/change-staff-password.dto";
 import { CreateStaffAdminDto } from "./dto/create-staff-admin.dto";
 import { SyncMemberDto } from "./dto/sync-member.dto";
 import { StaffJwtGuard, type StaffJwtPayload } from "./staff-jwt.guard";
@@ -35,6 +36,14 @@ export class AuthController {
   @Throttle({ default: { limit: 15, ttl: 60000 } })
   adminLogin(@Body() dto: AdminCredentialsDto) {
     return this.auth.staffLogin(dto.email, dto.password);
+  }
+
+  /** Logged-in staff (admin/superuser): change own password. */
+  @Patch("staff/password")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(StaffJwtGuard)
+  changeOwnStaffPassword(@Req() req: StaffRequest, @Body() dto: ChangeStaffPasswordDto) {
+    return this.auth.changeOwnStaffPassword(req.staffUser.sub, dto.currentPassword, dto.newPassword);
   }
 
   /** Superuser only: create an admin account (cannot create other superusers). */

@@ -233,6 +233,23 @@ export class AuthService {
     return this.staffLogin(email, password);
   }
 
+  async changeOwnStaffPassword(staffId: string, currentPassword: string, newPassword: string) {
+    const staff = await this.prisma.staffUser.findUnique({ where: { id: staffId } });
+    if (!staff) {
+      throw new UnauthorizedException("Invalid staff account");
+    }
+    const ok = await bcrypt.compare(currentPassword ?? "", staff.passwordHash);
+    if (!ok) {
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.staffUser.update({
+      where: { id: staff.id },
+      data: { passwordHash },
+    });
+    return { success: true, message: "Password updated" };
+  }
+
   async createAdmin(createdByStaffId: string, email: string, password: string) {
     const creator = await this.prisma.staffUser.findUnique({ where: { id: createdByStaffId } });
     if (!creator || creator.role !== StaffRole.SUPERUSER) {
