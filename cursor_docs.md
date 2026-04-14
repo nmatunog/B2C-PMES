@@ -2,6 +2,8 @@
 
 Use **`@cursor_docs.md`** in Cursor chat for stack-wide context.
 
+**Layout note:** The **Next.js** app (OpenNext Worker, `app/`, Route Handlers) lives under **`frontend/`** in this repository, not at the repo root. For production deploys and the Pages vs Worker split, see **[docs/OPERATIONS.md](./docs/OPERATIONS.md)**.
+
 ## Architecture (target: Firebase + Neon Postgres)
 
 | Layer | Role |
@@ -9,7 +11,7 @@ Use **`@cursor_docs.md`** in Cursor chat for stack-wide context.
 | **Firebase** | Member **Authentication** (email/password). Optional Firestore for PMES **resume progress** (`pmes_progress`). |
 | **Neon** | **PostgreSQL** for all cooperative data: participants, PMES records, LOI, membership lifecycle, staff users, full profiles. |
 | **NestJS API** (`backend/`) | REST API + Prisma ORM (existing). **Never** expose `DATABASE_URL` to the browser. |
-| **Next.js (repo root `app/`)** | **Optional migration path:** Edge Route Handlers (`export const runtime = 'edge'`) + `@neondatabase/serverless` + `lib/db.ts` — same Postgres schema as Prisma. Deploy target: Cloudflare Pages via `@cloudflare/next-on-pages` (see Next docs). |
+| **Next.js (`frontend/app/`)** | OpenNext on Cloudflare Worker: Route Handlers + `@neondatabase/serverless` — same Postgres schema as Prisma. Deploy: **`frontend/wrangler.b2c-pmes-web.jsonc`**. |
 | **Vite + React** (`frontend/`) | UI. Talks to Firebase Auth + `VITE_API_BASE_URL` → Nest and/or Next (same `/auth/...` paths when using rewrites). |
 
 Member UI remains **Vite**; env uses **`VITE_*`**, not `NEXT_PUBLIC_*`. The Next app at the repo root is primarily for **Edge API routes** during migration.
@@ -19,7 +21,7 @@ Member UI remains **Vite**; env uses **`VITE_*`**, not `NEXT_PUBLIC_*`. The Next
 - `backend/` — Nest, Prisma schema, migrations, `DATABASE_URL` / `DIRECT_URL`
 - `frontend/` — React app, `VITE_FIREBASE_*`, `VITE_API_BASE_URL`
 - `backend/prisma/schema.prisma` — source of truth for tables
-- `app/api/**`, `lib/db.ts` — Next.js Edge handlers (Neon SQL); keep schema aligned with Prisma migrations
+- `frontend/app/api/**`, `frontend/lib/db.js` (and related) — Next.js handlers (Neon SQL); keep schema aligned with Prisma migrations
 
 ## Neon Postgres setup
 

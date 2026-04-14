@@ -6,6 +6,16 @@ Pre-membership education seminar (PMES) application: modular **React (Vite)** fr
 
 Full setup, env vars, Firestore paths, Git workflow, and troubleshooting are in **[DEVELOPMENT.md](./DEVELOPMENT.md)** — use that for onboarding and **remote reload** on a new machine.
 
+## Documentation
+
+| Topic | Location |
+|-------|----------|
+| **Index of all docs** | **[docs/README.md](./docs/README.md)** |
+| **Production (Cloudflare Pages + Worker, deploy, CORS, domains)** | **[docs/OPERATIONS.md](./docs/OPERATIONS.md)** |
+| **OpenNext / Wrangler** | **[frontend/CLOUDFLARE.md](./frontend/CLOUDFLARE.md)** |
+| **Neon (Postgres)** | **[docs/deploy-neon.md](./docs/deploy-neon.md)** |
+| **Cursor / stack context** | **[cursor_docs.md](./cursor_docs.md)** |
+
 ## Structure
 
 | Path | Description |
