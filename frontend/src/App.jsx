@@ -1003,6 +1003,28 @@ export default function App() {
     }
   };
 
+  const handlePromoteAdminToSuperuser = async (adminEmail) => {
+    if (!staffAccessToken || staffRole !== "superuser") return;
+    const email = String(adminEmail ?? "").trim().toLowerCase();
+    if (!email) return;
+    const confirmed = window.confirm(
+      `Promote ${email} to superuser? They will be able to manage admin accounts and destructive admin actions.`,
+    );
+    if (!confirmed) return;
+    setStaffAdminError(null);
+    setLoading(true);
+    try {
+      await PmesService.promoteStaffToSuperuser(staffAccessToken, email);
+      const admins = await PmesService.listStaffAdmins(staffAccessToken);
+      setManagedStaffAdmins(Array.isArray(admins) ? admins : []);
+      window.alert(`Promoted ${email} to superuser.`);
+    } catch (e) {
+      setStaffAdminError(e instanceof Error ? e.message : "Could not promote admin.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChangeStaffPasswordSubmit = async (event) => {
     event.preventDefault();
     if (!staffAccessToken) return;
@@ -3313,7 +3335,17 @@ export default function App() {
                   {managedStaffAdmins.map((a) => (
                     <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                       <span className="font-bold text-slate-900">{a.email}</span>
-                      <span className="text-xs font-bold uppercase text-slate-400">{a.role}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase text-slate-400">{a.role}</span>
+                        <button
+                          type="button"
+                          onClick={() => void handlePromoteAdminToSuperuser(a.email)}
+                          disabled={loading}
+                          className="rounded-lg border border-blue-200 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Make superuser
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

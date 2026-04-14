@@ -277,6 +277,31 @@ export class AuthService {
     });
   }
 
+  async promoteAdminToSuperuser(actingStaffId: string, adminEmailRaw: string) {
+    const actor = await this.prisma.staffUser.findUnique({ where: { id: actingStaffId } });
+    if (!actor || actor.role !== StaffRole.SUPERUSER) {
+      throw new ForbiddenException("Only a superuser can promote staff to superuser");
+    }
+    const email = adminEmailRaw.trim().toLowerCase();
+    const target = await this.prisma.staffUser.findUnique({ where: { email } });
+    if (!target) {
+      throw new BadRequestException("No staff account found for that email");
+    }
+    if (target.role === StaffRole.SUPERUSER) {
+      throw new ConflictException("That account is already a superuser");
+    }
+    return this.prisma.staffUser.update({
+      where: { id: target.id },
+      data: { role: StaffRole.SUPERUSER },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
+
   /**
    * Bridge Firebase Auth → `Participant` (Neon/Postgres). Call after sign-up or first sign-in.
    * Upserts by `firebaseUid`, or links uid to an existing row matched by email (e.g. PMES created first).

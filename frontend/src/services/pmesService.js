@@ -225,6 +225,22 @@ export const PmesService = {
     return response.json();
   },
 
+  async promoteStaffToSuperuser(accessToken, email) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/auth/staff/superusers/promote`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
   async changeOwnStaffPassword(accessToken, currentPassword, newPassword) {
     if (!useRest()) throw new Error("API required");
     const response = await fetch(`${apiBase()}/auth/staff/password`, {

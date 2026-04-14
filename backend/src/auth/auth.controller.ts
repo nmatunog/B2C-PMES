@@ -5,6 +5,7 @@ import { AuthService } from "./auth.service";
 import { AdminCredentialsDto } from "./dto/admin-credentials.dto";
 import { ChangeStaffPasswordDto } from "./dto/change-staff-password.dto";
 import { CreateStaffAdminDto } from "./dto/create-staff-admin.dto";
+import { PromoteStaffSuperuserDto } from "./dto/promote-staff-superuser.dto";
 import { SyncMemberDto } from "./dto/sync-member.dto";
 import { StaffJwtGuard, type StaffJwtPayload } from "./staff-jwt.guard";
 import { SuperuserGuard } from "./superuser.guard";
@@ -52,6 +53,14 @@ export class AuthController {
   @UseGuards(StaffJwtGuard, SuperuserGuard)
   createStaffAdmin(@Req() req: StaffRequest, @Body() dto: CreateStaffAdminDto) {
     return this.auth.createAdmin(req.staffUser.sub, dto.email, dto.password);
+  }
+
+  /** Superuser only: promote an existing admin account to superuser. */
+  @Post("staff/superusers/promote")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(StaffJwtGuard, SuperuserGuard)
+  promoteStaffSuperuser(@Req() req: StaffRequest, @Body() dto: PromoteStaffSuperuserDto) {
+    return this.auth.promoteAdminToSuperuser(req.staffUser.sub, dto.email);
   }
 
   /** Superuser only: list admin accounts (no passwords). */
