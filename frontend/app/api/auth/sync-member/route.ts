@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { verifyFirebaseIdToken } from "@/lib/firebase-edge";
+import { edgeCorsOptions } from "@/lib/edge-cors";
 
 type SyncBody = {
   uid?: string;
@@ -87,6 +88,11 @@ function toIso(d: unknown): string {
   if (d instanceof Date) return d.toISOString();
   if (typeof d === "string") return d;
   return String(d);
+}
+
+/** Browser preflight for `POST /auth/sync-member` from Pages / custom domain. */
+export async function OPTIONS() {
+  return edgeCorsOptions();
 }
 
 export async function POST(request: Request) {
