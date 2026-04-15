@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   reload,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
   updateProfile,
 } from "firebase/auth";
 import {
@@ -308,6 +311,14 @@ export default function App() {
   const [memberLoginEmailBusy, setMemberLoginEmailBusy] = useState(false);
   const [memberLoginEmailError, setMemberLoginEmailError] = useState(/** @type {string | null} */ (null));
   const [memberLoginEmailSuccess, setMemberLoginEmailSuccess] = useState(/** @type {string | null} */ (null));
+  const [memberPasswordForm, setMemberPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [memberPasswordBusy, setMemberPasswordBusy] = useState(false);
+  const [memberPasswordError, setMemberPasswordError] = useState(/** @type {string | null} */ (null));
+  const [memberPasswordSuccess, setMemberPasswordSuccess] = useState(/** @type {string | null} */ (null));
   const [loiData, setLoiData] = useState({ address: "", occupation: "", employer: "", initialCapital: "", agreement: false });
   const [retrievalData, setRetrievalData] = useState({ email: "", dob: "" });
   const [pioneerReclaimFirstName, setPioneerReclaimFirstName] = useState("");
@@ -2059,11 +2070,26 @@ export default function App() {
                   </div>
                 ) : null}
                 {pioneerReclaimEligible === false ? (
-                  <p className="text-sm font-medium leading-relaxed text-slate-600">
-                    {pioneerReclaimFailReason === "ambiguous"
-                      ? "More than one roster row matched. Contact the cooperative office with your name and TIN."
-                      : "We couldn&apos;t match a pioneer row that still needs a profile. Check spelling (including middle name), TIN digits, and use 000000000 only if your import used that placeholder. Contact the office if needed."}
-                  </p>
+                  <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-950">
+                    <p className="font-bold">
+                      {pioneerReclaimFailReason === "ambiguous"
+                        ? "We found more than one matching pioneer roster row."
+                        : "No unclaimed pioneer roster row matched this entry."}
+                    </p>
+                    {pioneerReclaimFailReason === "ambiguous" ? (
+                      <p className="font-medium leading-relaxed">
+                        Contact the cooperative office and provide your full name and TIN so staff can identify the correct record.
+                      </p>
+                    ) : (
+                      <ul className="list-disc space-y-1 pl-5 font-medium leading-relaxed">
+                        <li>Required fields: First name, Last name, and TIN.</li>
+                        <li>Use your exact roster spelling (include middle name if listed in the roster).</li>
+                        <li>TIN can include dashes/spaces; only digits are matched after normalization.</li>
+                        <li>Use <span className="font-mono">000000000</span> only if your imported roster row used that placeholder.</li>
+                        <li>If this account was already claimed before, use normal Sign in instead of pioneer claim.</li>
+                      </ul>
+                    )}
+                  </div>
                 ) : null}
               </>
             )}
@@ -2701,7 +2727,7 @@ export default function App() {
               readOnly={Boolean(user?.email)}
               title={user?.email ? "Email is tied to your member login." : undefined}
             />
-            {user && useApiMembership ? (
+            {user && useApiMembership && regNav === "portal" ? (
               <div className="rounded-2xl border border-[#004aad]/20 bg-slate-50/90 p-4 text-left sm:p-5">
                 <p className="text-sm font-black uppercase tracking-wide text-[#004aad]">Change sign-in email</p>
                 <p className="mt-2 text-xs font-medium leading-relaxed text-slate-600">
@@ -2807,6 +2833,122 @@ export default function App() {
                     </>
                   ) : (
                     "Update sign-in email"
+                  )}
+                </button>
+              </div>
+            ) : null}
+            {user && regNav === "portal" ? (
+              <div className="rounded-2xl border border-[#004aad]/20 bg-slate-50/90 p-4 text-left sm:p-5">
+                <p className="text-sm font-black uppercase tracking-wide text-[#004aad]">Change password</p>
+                <p className="mt-2 text-xs font-medium leading-relaxed text-slate-600">
+                  For security, enter your current password first. Your new password must be at least 6 characters.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <input
+                    type="password"
+                    className="input-field"
+                    autoComplete="current-password"
+                    placeholder="Current password"
+                    value={memberPasswordForm.currentPassword}
+                    onChange={(e) => {
+                      setMemberPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }));
+                      setMemberPasswordError(null);
+                      setMemberPasswordSuccess(null);
+                    }}
+                    disabled={memberPasswordBusy}
+                  />
+                  <input
+                    type="password"
+                    className="input-field"
+                    autoComplete="new-password"
+                    placeholder="New password"
+                    value={memberPasswordForm.newPassword}
+                    onChange={(e) => {
+                      setMemberPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }));
+                      setMemberPasswordError(null);
+                      setMemberPasswordSuccess(null);
+                    }}
+                    disabled={memberPasswordBusy}
+                  />
+                  <input
+                    type="password"
+                    className="input-field"
+                    autoComplete="new-password"
+                    placeholder="Confirm new password"
+                    value={memberPasswordForm.confirmPassword}
+                    onChange={(e) => {
+                      setMemberPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }));
+                      setMemberPasswordError(null);
+                      setMemberPasswordSuccess(null);
+                    }}
+                    disabled={memberPasswordBusy}
+                  />
+                </div>
+                {memberPasswordError ? (
+                  <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{memberPasswordError}</div>
+                ) : null}
+                {memberPasswordSuccess ? (
+                  <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">
+                    {memberPasswordSuccess}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={memberPasswordBusy}
+                  onClick={async () => {
+                    setMemberPasswordError(null);
+                    setMemberPasswordSuccess(null);
+                    const current = String(memberPasswordForm.currentPassword ?? "");
+                    const next = String(memberPasswordForm.newPassword ?? "");
+                    const confirm = String(memberPasswordForm.confirmPassword ?? "");
+                    if (!current || !next || !confirm) {
+                      setMemberPasswordError("Enter your current password, new password, and confirmation.");
+                      return;
+                    }
+                    if (next.length < 6) {
+                      setMemberPasswordError("New password must be at least 6 characters.");
+                      return;
+                    }
+                    if (next !== confirm) {
+                      setMemberPasswordError("New password and confirmation do not match.");
+                      return;
+                    }
+                    const currentEmail = String(user.email ?? "").trim();
+                    if (!currentEmail) {
+                      setMemberPasswordError("Your account email is unavailable. Sign out then sign in again.");
+                      return;
+                    }
+                    setMemberPasswordBusy(true);
+                    try {
+                      const cred = EmailAuthProvider.credential(currentEmail, current);
+                      await reauthenticateWithCredential(user, cred);
+                      await updatePassword(user, next);
+                      setMemberPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                      setMemberPasswordSuccess("Password updated successfully. Use the new password on your next sign-in.");
+                    } catch (e) {
+                      const code = e && typeof e === "object" && "code" in e ? String(e.code) : "";
+                      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+                        setMemberPasswordError("Current password is incorrect.");
+                      } else if (code === "auth/weak-password") {
+                        setMemberPasswordError("New password is too weak. Use at least 6 characters.");
+                      } else if (code === "auth/too-many-requests") {
+                        setMemberPasswordError("Too many attempts. Wait a moment and try again.");
+                      } else {
+                        setMemberPasswordError(e instanceof Error ? e.message : "Could not change password.");
+                      }
+                    } finally {
+                      setMemberPasswordBusy(false);
+                    }
+                  }}
+                  className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border-2 border-[#004aad]/30 bg-white px-4 py-3 text-sm font-black uppercase tracking-wide text-[#004aad] shadow-sm transition hover:border-[#004aad]/50 hover:bg-[#004aad]/5 disabled:opacity-50 sm:w-auto"
+                >
+                  {memberPasswordBusy ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
+                      Updating…
+                    </>
+                  ) : (
+                    "Update password"
                   )}
                 </button>
               </div>
