@@ -2074,7 +2074,7 @@ export default function App() {
                     <p className="font-bold">
                       {pioneerReclaimFailReason === "ambiguous"
                         ? "We found more than one matching pioneer roster row."
-                        : "No unclaimed pioneer roster row matched this entry."}
+                        : "We could not match an unclaimed pioneer roster row with this entry."}
                     </p>
                     {pioneerReclaimFailReason === "ambiguous" ? (
                       <p className="font-medium leading-relaxed">
