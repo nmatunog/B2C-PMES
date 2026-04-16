@@ -282,6 +282,8 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [forgotPasswordBusy, setForgotPasswordBusy] = useState(false);
+  const [forgotPasswordNotice, setForgotPasswordNotice] = useState(/** @type {string | null} */ (null));
   const [user, setUser] = useState(null);
   const hydratingRef = useRef(false);
   /** Last uid we ran Postgres sync for inside this auth listener (avoids double fire when sign-up also calls sync). */
@@ -1165,6 +1167,7 @@ export default function App() {
     }
     setMemberAuthMode(mode);
     setError(null);
+    setForgotPasswordNotice(null);
   };
 
   const handleSignUpSubmit = async (event) => {
@@ -1266,6 +1269,7 @@ export default function App() {
   const handleLoginSubmit = async (event) => {
     event.preventDefault();
     setError(null);
+    setForgotPasswordNotice(null);
     if (!isFirebaseConfigured) {
       setError("Firebase is not configured.");
       return;
@@ -1296,6 +1300,16 @@ export default function App() {
   const handleForgotPassword = async () => {
     const raw = logIn.email.trim();
     setError(null);
+    setForgotPasswordNotice(null);
+    if (!isFirebaseConfigured) {
+      setError("Firebase is not configured.");
+      return;
+    }
+    if (!raw) {
+      setError("Enter your login email/callsign/member ID first, then tap Forgot password.");
+      return;
+    }
+    setForgotPasswordBusy(true);
     try {
       const resolved = await resolveFirebaseLoginEmail(raw, "forgot");
       if (!resolved.ok) {
@@ -1303,10 +1317,11 @@ export default function App() {
         return;
       }
       await sendPasswordResetEmail(auth, resolved.email);
-      setError(null);
-      alert("Password reset email sent. Check your inbox.");
+      setForgotPasswordNotice(`Password reset email sent to ${resolved.email}. Check your inbox and spam folder.`);
     } catch (err) {
       setError(mapFirebaseAuthError(err?.code));
+    } finally {
+      setForgotPasswordBusy(false);
     }
   };
 
@@ -1654,6 +1669,11 @@ export default function App() {
                   {error}
                 </div>
               )}
+              {!isSignup && forgotPasswordNotice ? (
+                <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-center text-sm font-semibold text-emerald-900 sm:text-base">
+                  {forgotPasswordNotice}
+                </div>
+              ) : null}
               <div className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
                 {isSignup && pioneerClaimAuthActive ? (
                   <>
@@ -1853,9 +1873,10 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="mt-4 w-full text-sm font-bold text-slate-500 hover:text-[#004aad]"
+                  disabled={forgotPasswordBusy}
+                  className="mt-4 w-full text-sm font-bold text-slate-500 hover:text-[#004aad] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Forgot password?
+                  {forgotPasswordBusy ? "Sending reset email..." : "Forgot password?"}
                 </button>
               ) : null}
               <button
