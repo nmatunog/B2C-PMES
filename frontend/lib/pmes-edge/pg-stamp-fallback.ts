@@ -4,9 +4,12 @@
  */
 export function isMissingMemberProfileStampColumnError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e ?? "");
+  if (!/memberProfileConcurrencyStamp/i.test(msg)) return false;
+  const code = typeof (e as { code?: string })?.code === "string" ? (e as { code: string }).code : "";
   return (
-    /42703/.test(msg) ||
-    /column\s+"?memberProfileConcurrencyStamp"?\s+does not exist/i.test(msg) ||
-    (msg.includes("memberProfileConcurrencyStamp") && /does not exist/i.test(msg))
+    code === "42703" ||
+    /does not exist/i.test(msg) ||
+    /undefined column/i.test(msg) ||
+    /column .* does not exist/i.test(msg)
   );
 }
