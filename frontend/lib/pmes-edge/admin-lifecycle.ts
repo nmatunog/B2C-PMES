@@ -3,6 +3,7 @@ export type AdminLifecycleRow = {
   email: string;
   legacyPioneerImport: boolean | null;
   memberIdNo: string | null;
+  memberProfileConcurrencyStamp: number;
   callsign: string | null;
   lastNameKey: string | null;
   lastNameSeq: number | null;
@@ -56,6 +57,7 @@ export function toLifecyclePayload(row: AdminLifecycleRow) {
     boardApproved: board,
     fullProfileCompleted: profile,
     canAccessFullMemberPortal: stage === "FULL_MEMBER",
+    profileRecordVersion: row.memberProfileConcurrencyStamp,
     isLegacyFounderImport: Boolean(row.legacyPioneerImport),
     memberIdNo: row.memberIdNo,
     callsign: row.callsign,

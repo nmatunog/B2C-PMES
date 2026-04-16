@@ -37,6 +37,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         p.email,
         p."legacyPioneerImport",
         p."memberIdNo",
+        p."memberProfileConcurrencyStamp",
         p.callsign,
         p."lastNameKey",
         p."lastNameSeq",

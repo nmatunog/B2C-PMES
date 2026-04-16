@@ -16,6 +16,7 @@ export type ParticipantCore = {
   initialFeesPaidAt: string | Date | null;
   boardApprovedAt: string | Date | null;
   fullProfileCompletedAt: string | Date | null;
+  memberProfileConcurrencyStamp: number;
   callsign: string | null;
   lastNameKey: string | null;
   lastNameSeq: number | null;
@@ -48,6 +49,7 @@ export async function loadParticipantWithRelsByEmail(
       id, "fullName", email, phone, dob, gender, "createdAt",
       "legacyPioneerImport", "memberIdNo", "tinNo",
       "initialFeesPaidAt", "boardApprovedAt", "fullProfileCompletedAt",
+      "memberProfileConcurrencyStamp",
       callsign, "lastNameKey", "lastNameSeq"
     FROM "Participant"
     WHERE email = ${email}
@@ -67,6 +69,7 @@ export async function loadParticipantWithRelsById(
       id, "fullName", email, phone, dob, gender, "createdAt",
       "legacyPioneerImport", "memberIdNo", "tinNo",
       "initialFeesPaidAt", "boardApprovedAt", "fullProfileCompletedAt",
+      "memberProfileConcurrencyStamp",
       callsign, "lastNameKey", "lastNameSeq"
     FROM "Participant"
     WHERE id = ${id}

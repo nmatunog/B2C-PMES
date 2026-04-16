@@ -304,16 +304,28 @@ export const PmesService = {
     return response.json();
   },
 
-  async submitFullProfile({ email, profileJson, sheetFileName, notes, signal }) {
+  async submitFullProfile({ email, profileJson, sheetFileName, notes, expectedProfileRecordVersion, signal }) {
     if (!useRest()) throw new Error("API required");
+    const body = {
+      email,
+      profileJson,
+      sheetFileName,
+      notes,
+      ...(typeof expectedProfileRecordVersion === "number" && Number.isFinite(expectedProfileRecordVersion)
+        ? { expectedProfileRecordVersion }
+        : {}),
+    };
     const response = await fetch(`${apiBase()}/pmes/full-profile`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, profileJson, sheetFileName, notes }),
+      body: JSON.stringify(body),
       signal,
     });
     if (!response.ok) {
-      throw new Error(await parseApiErrorMessage(response));
+      const msg = await parseApiErrorMessage(response);
+      const err = new Error(msg);
+      if (response.status === 409) err.pmesConflict = true;
+      throw err;
     }
     return response.json();
   },

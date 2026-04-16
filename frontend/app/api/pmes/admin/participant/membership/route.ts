@@ -47,6 +47,7 @@ export async function PATCH(request: Request) {
         p.email,
         p."legacyPioneerImport",
         p."memberIdNo",
+        p."memberProfileConcurrencyStamp",
         p.callsign,
         p."lastNameKey",
         p."lastNameSeq",

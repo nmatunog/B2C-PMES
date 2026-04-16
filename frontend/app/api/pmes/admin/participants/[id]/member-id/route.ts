@@ -50,7 +50,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     await sql`
       UPDATE "Participant"
-      SET "memberIdNo" = ${memberIdNo}
+      SET
+        "memberIdNo" = ${memberIdNo},
+        "memberProfileConcurrencyStamp" = "memberProfileConcurrencyStamp" + 1
       WHERE id = ${participantId}
     `;
 
@@ -60,6 +62,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         p.email,
         p."legacyPioneerImport",
         p."memberIdNo",
+        p."memberProfileConcurrencyStamp",
         p.callsign,
         p."lastNameKey",
         p."lastNameSeq",

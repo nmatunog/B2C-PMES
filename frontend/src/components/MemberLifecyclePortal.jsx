@@ -253,6 +253,7 @@ export function MemberLifecyclePortal({
           ) : null}
           <MemberFullProfileForm
             memberEmail={email}
+            profileRecordVersion={typeof lifecycle?.profileRecordVersion === "number" ? lifecycle.profileRecordVersion : null}
             assignedMemberId={typeof lifecycle?.memberIdNo === "string" ? lifecycle.memberIdNo : ""}
             memberIdIsProvisional={lifecycle?.memberIdIsProvisional === true}
             assignedCallsign={typeof lifecycle?.callsign === "string" ? lifecycle.callsign : ""}

@@ -453,6 +453,8 @@ function MunicipalityCombobox({ label, required, provCode, value, placeholder, d
  */
 export function MemberFullProfileForm({
   memberEmail,
+  /** Last GET /pmes/membership-lifecycle `profileRecordVersion` for optimistic concurrency on submit. */
+  profileRecordVersion = null,
   /** Server-assigned public member ID (B2C-…); shown read-only when present. */
   assignedMemberId = "",
   /** True until first full-profile submit: middle segment is registration year, not birth cohort yet. */
@@ -835,6 +837,10 @@ export function MemberFullProfileForm({
         sheetFileName: sheetFile ? sheetFile.name : "",
         notes: profile.internalNotes || "",
         abortSignal: ctrl.signal,
+        expectedProfileRecordVersion:
+          typeof profileRecordVersion === "number" && Number.isFinite(profileRecordVersion)
+            ? profileRecordVersion
+            : undefined,
       });
       window.clearTimeout(tid);
       setFormToast({
@@ -849,9 +855,10 @@ export function MemberFullProfileForm({
       setDraftImageBackupNote(false);
     } catch (err) {
       window.clearTimeout(tid);
+      const conflict = err && typeof err === "object" && "pmesConflict" in err && err.pmesConflict === true;
       setFormToast({
         type: "error",
-        title: "Submission failed",
+        title: conflict ? "Profile updated elsewhere" : "Submission failed",
         message: formatSubmitError(err),
       });
     }

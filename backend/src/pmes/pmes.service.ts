@@ -453,6 +453,7 @@ export class PmesService {
       where: { id },
       data: {
         memberIdNo: normalized,
+        memberProfileConcurrencyStamp: { increment: 1 },
         ...(nextSnapshot !== undefined ? { memberProfileSnapshot: nextSnapshot } : {}),
         ...(nextFullProfileJson !== undefined ? { fullProfileJson: nextFullProfileJson } : {}),
       },
@@ -505,6 +506,7 @@ export class PmesService {
         boardApproved: false,
         fullProfileCompleted: false,
         canAccessFullMemberPortal: false,
+        profileRecordVersion: null as number | null,
         memberIdNo: null as string | null,
         callsign: null as string | null,
         alternatePublicHandle: null as string | null,
@@ -565,6 +567,17 @@ export class PmesService {
     }
     if (participant.fullProfileCompletedAt) {
       throw new BadRequestException("Full profile was already submitted.");
+    }
+
+    const expectedV = dto.expectedProfileRecordVersion;
+    if (
+      expectedV !== undefined &&
+      expectedV !== null &&
+      participant.memberProfileConcurrencyStamp !== expectedV
+    ) {
+      throw new ConflictException(
+        "This profile was updated elsewhere (another tab, session, or staff). Refresh the page, then submit again.",
+      );
     }
 
     let parsed: unknown;
@@ -652,8 +665,11 @@ export class PmesService {
           lastNameSeq = row.nextSeq;
         }
 
-        await tx.participant.update({
-          where: { id: withMemberId.id },
+        const stampWhere =
+          expectedV !== undefined && expectedV !== null ? { memberProfileConcurrencyStamp: expectedV } : {};
+
+        const updated = await tx.participant.updateMany({
+          where: { id: withMemberId.id, ...stampWhere },
           data: {
             fullProfileCompletedAt: new Date(),
             fullProfileJson: JSON.stringify(payload),
@@ -665,9 +681,15 @@ export class PmesService {
             callsign: callsignOut,
             lastNameKey,
             lastNameSeq,
+            memberProfileConcurrencyStamp: { increment: 1 },
             ...(migratedLoginEmail ? { email: migratedLoginEmail } : {}),
           },
         });
+        if (updated.count === 0) {
+          throw new ConflictException(
+            "This profile was updated elsewhere (another tab, session, or staff). Refresh the page, then submit again.",
+          );
+        }
       });
     } catch (err) {
       if (migratedLoginEmail && uid) {
@@ -999,6 +1021,8 @@ export class PmesService {
       boardApproved: board,
       fullProfileCompleted: profile,
       canAccessFullMemberPortal: stage === "FULL_MEMBER",
+      /** Matches `Participant.memberProfileConcurrencyStamp` for optimistic locking on full-profile submit. */
+      profileRecordVersion: participant.memberProfileConcurrencyStamp,
       /** Pre-roster import: member already pledged elsewhere; digital PMES not required on this app. */
       isLegacyFounderImport: participant.legacyPioneerImport,
       /** Assigned once by the server; format B2C-{initials}-{YY}-{suffix} (memorable + unguessable tail). */
@@ -1093,7 +1117,7 @@ export class PmesService {
     if (!raw) {
       const updated = await this.prisma.participant.update({
         where: { id: participant.id },
-        data: { callsign: null },
+        data: { callsign: null, memberProfileConcurrencyStamp: { increment: 1 } },
       });
       return {
         success: true as const,
@@ -1110,7 +1134,7 @@ export class PmesService {
     await this.assertCallsignAvailable(normalized, participant.id);
     const updated = await this.prisma.participant.update({
       where: { id: participant.id },
-      data: { callsign: normalized },
+      data: { callsign: normalized, memberProfileConcurrencyStamp: { increment: 1 } },
     });
     return {
       success: true as const,
@@ -1201,6 +1225,7 @@ export class PmesService {
         where: { id: participant.id },
         data: {
           email: migratedLoginEmail,
+          memberProfileConcurrencyStamp: { increment: 1 },
           ...(nextSnapshot !== undefined ? { memberProfileSnapshot: nextSnapshot } : {}),
           ...(nextFullProfileJson !== undefined ? { fullProfileJson: nextFullProfileJson } : {}),
         },

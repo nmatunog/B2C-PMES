@@ -64,6 +64,13 @@ model Participant {
   lastNameSeq           Int?
   /** Preloaded roster row (admin import): member reclaims Firebase account + completes digital profile */
   legacyPioneerImport   Boolean   @default(false)
+  /**
+   * Optimistic concurrency for the membership profile form. Incremented on profile-visible writes (callsign,
+   * login-email merge, superuser member ID patch, successful full-profile submit). Not bumped when assigning a
+   * provisional public ID during lifecycle loads (`ensureMemberPublicId`), so members are not forced to refresh
+   * just because the server filled `memberIdNo`.
+   */
+  memberProfileConcurrencyStamp Int @default(0)
   /** Full legacy sheet row (B2C registry columns + extras) for audit and reclaim support */
   registryImportSnapshot Json?
   pmesRecords   PmesRecord[]

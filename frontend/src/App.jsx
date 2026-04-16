@@ -3084,7 +3084,13 @@ export default function App() {
               }}
               onOpenPayment={() => setAppState("payment_portal")}
               onRefreshLifecycle={() => refreshMembershipLifecycle()}
-              onSubmitFullProfile={async ({ profileJson, sheetFileName, notes, abortSignal }) => {
+              onSubmitFullProfile={async ({
+                profileJson,
+                sheetFileName,
+                notes,
+                abortSignal,
+                expectedProfileRecordVersion,
+              }) => {
                 if (!user?.email) throw new Error("You must be signed in to submit the membership form.");
                 /** @type {{ success?: boolean; loginEmailUpdated?: boolean; newLoginEmail?: string }} */
                 const submitResult = await PmesService.submitFullProfile({
@@ -3093,6 +3099,7 @@ export default function App() {
                   sheetFileName,
                   notes: notes ?? "",
                   signal: abortSignal,
+                  expectedProfileRecordVersion,
                 });
                 if (submitResult?.loginEmailUpdated && auth.currentUser) {
                   try {

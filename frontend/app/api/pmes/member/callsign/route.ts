@@ -52,7 +52,11 @@ export async function PATCH(request: Request) {
   try {
     if (!raw) {
       const updated = await sql`
-        UPDATE "Participant" SET callsign = NULL WHERE id = ${participant.id}::uuid
+        UPDATE "Participant"
+        SET
+          callsign = NULL,
+          "memberProfileConcurrencyStamp" = "memberProfileConcurrencyStamp" + 1
+        WHERE id = ${participant.id}::uuid
         RETURNING callsign, "lastNameKey", "lastNameSeq"
       `;
       const u = (updated as { callsign: string | null; lastNameKey: string | null; lastNameSeq: number | null }[])[0]!;
@@ -87,7 +91,9 @@ export async function PATCH(request: Request) {
 
     const updated = await sql`
       UPDATE "Participant"
-      SET callsign = ${normalized}
+      SET
+        callsign = ${normalized},
+        "memberProfileConcurrencyStamp" = "memberProfileConcurrencyStamp" + 1
       WHERE id = ${participant.id}::uuid
       RETURNING callsign, "lastNameKey", "lastNameSeq"
     `;

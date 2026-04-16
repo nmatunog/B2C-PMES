@@ -20,6 +20,7 @@ export async function GET(request: Request) {
         p.email,
         p."legacyPioneerImport",
         p."memberIdNo",
+        p."memberProfileConcurrencyStamp",
         p.callsign,
         p."lastNameKey",
         p."lastNameSeq",
