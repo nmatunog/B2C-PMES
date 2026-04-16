@@ -412,6 +412,8 @@ export default function App() {
   const audioCache = useRef({});
   const inflightTts = useRef({});
   const currentAudio = useRef(null);
+  /** Prevents duplicate POST /auth/admin/login if the staff form is submitted twice quickly. */
+  const adminLoginInFlightRef = useRef(false);
 
   const ensureTtsUrl = useCallback(async (text, cacheKey) => {
     const cacheId = `${VOICE}::${TTS_CLIENT_CACHE_BUST}::${cacheKey}`;
@@ -632,6 +634,15 @@ export default function App() {
     if (RESUMABLE_APP_STATES.has(appState)) {
       lastFlowAppStateRef.current = appState;
     }
+  }, [appState]);
+
+  /**
+   * Staff login fields only belong on `admin_login`. Clear when navigating anywhere else so credentials
+   * cannot linger in memory while members use PMES (and so no code path can reuse them accidentally).
+   */
+  useEffect(() => {
+    if (appState === "admin_login") return;
+    setAdminCreds({ email: "", password: "" });
   }, [appState]);
 
   useEffect(() => {
@@ -967,14 +978,23 @@ export default function App() {
       setError("Set VITE_API_BASE_URL (e.g. http://localhost:3000) in frontend/.env for admin sign-in.");
       return;
     }
+    const email = String(adminCreds.email ?? "").trim();
+    const password = String(adminCreds.password ?? "");
+    if (!email || !password.trim()) {
+      setError("Enter staff email and password.");
+      return;
+    }
+    if (adminLoginInFlightRef.current) return;
+    adminLoginInFlightRef.current = true;
     setLoading(true);
     try {
-      const result = await PmesService.getAllRecords(db, appId, adminCreds);
+      const result = await PmesService.getAllRecords(db, appId, { email, password });
       setMasterList(result.records);
       setStaffRole(result.role);
       setStaffAccessToken(result.accessToken);
-      setStaffSessionEmail(adminCreds.email.trim());
-      persistStaffSession(result.accessToken, result.role, adminCreds.email.trim());
+      setStaffSessionEmail(email);
+      persistStaffSession(result.accessToken, result.role, email);
+      setAdminCreds({ email: "", password: "" });
       if (result.role === "superuser") {
         try {
           const admins = await PmesService.listStaffAdmins(result.accessToken);
@@ -989,6 +1009,7 @@ export default function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Admin sign-in failed.");
     } finally {
+      adminLoginInFlightRef.current = false;
       setLoading(false);
     }
   };

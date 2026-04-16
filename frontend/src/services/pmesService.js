@@ -24,6 +24,7 @@ async function parseApiErrorMessage(response) {
   return raw;
 }
 
+/** Sole caller: `getAllRecords` after explicit staff dashboard form submit — not used for member flows. */
 async function staffLoginRequest(email, password) {
   const response = await fetch(`${apiBase()}/auth/admin/login`, {
     method: "POST",
@@ -31,7 +32,7 @@ async function staffLoginRequest(email, password) {
     body: JSON.stringify({ email, password }),
   });
   if (!response.ok) {
-    throw new Error((await response.text()) || "Staff sign-in failed");
+    throw new Error(await parseApiErrorMessage(response));
   }
   return response.json();
 }
@@ -133,10 +134,12 @@ export const PmesService = {
    */
   async getAllRecords(db, appId, credentials) {
     if (useRest()) {
-      if (!credentials?.email?.trim() || credentials.password === undefined || credentials.password === "") {
+      const email = String(credentials?.email ?? "").trim();
+      const password = String(credentials?.password ?? "");
+      if (!email || !password.trim()) {
         throw new Error("Staff email and password required");
       }
-      const login = await staffLoginRequest(credentials.email.trim(), credentials.password);
+      const login = await staffLoginRequest(email, password);
       const accessToken = login.accessToken;
       const role = login.role;
       const response = await fetch(`${apiBase()}/pmes/admin/records`, {
