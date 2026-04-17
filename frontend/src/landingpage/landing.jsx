@@ -1058,6 +1058,16 @@ export default function LandingPage({
             decoding="async"
           />
         </figure>
+        <div className="mx-auto mt-5 flex w-full max-w-7xl justify-center px-4 sm:mt-6 sm:px-6 lg:px-8">
+          <a
+            href="https://store.versa.com.ph/public/b2c-consumers-cooperative"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex min-h-[52px] w-full max-w-md items-center justify-center rounded-2xl px-6 py-3 text-center text-base font-bold shadow-lg sm:w-auto sm:px-8 ${ctaPrimary} ${ctaPrimaryFocus}`}
+          >
+            Visit the B2CCoop Store
+          </a>
+        </div>
         <div className="h-14 sm:h-16" aria-hidden />
       </section>
 
