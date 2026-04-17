@@ -5,7 +5,7 @@ const baseUrl = () => (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function requestTts({ text, voice = "Sadachbia" }, options = {}) {
+export async function requestTts({ text, voice = "Aoede" }, options = {}) {
   const maxAttempts = options.retries ?? 3;
   const base = baseUrl();
   if (!base) {

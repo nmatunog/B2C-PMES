@@ -13,8 +13,8 @@ import type { LandingChatLanguage } from "./interfaces/landing-chat-provider.int
 import type { TtsSynthesisResult } from "./interfaces/tts-provider.interface";
 import { normalizeKaubanForTts } from "./utils/tts-kauban-normalize";
 
-/** Gemini: Sadachbia = lively (see Google prebuilt TTS voice list). */
-const DEFAULT_VOICE = "Sadachbia";
+/** Gemini default voice — broadly supported. */
+const DEFAULT_VOICE = "Aoede";
 const CACHE_MAX = 64;
 /** Bump when synthesis behavior changes (e.g. prompt text) so old cached audio is not reused. */
 const TTS_CACHE_VERSION = 3;

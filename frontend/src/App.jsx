@@ -76,12 +76,12 @@ import {
 import { resolveMemberPortalAccess } from "./lib/membershipAccess.js";
 
 /**
- * Gemini prebuilt voices (lively / energetic family): Sadachbia = lively, Zephyr = bright,
- * Puck = upbeat, Fenrir = excitable, Laomedeia = upbeat. OpenAI/Grok map unknown names server-side.
+ * Gemini prebuilt voices currently accepted in production include Aoede.
+ * OpenAI/Grok map unknown names server-side, but Gemini can reject retired names.
  */
-const VOICE = "Sadachbia";
+const VOICE = "Aoede";
 /** Bump when backend TTS output meaningfully changes — avoids replaying stale blob URLs from an old build. */
-const TTS_CLIENT_CACHE_BUST = "3";
+const TTS_CLIENT_CACHE_BUST = "4";
 const REGISTRY_PAGE_SIZE = 50;
 
 const RESUMABLE_APP_STATES = new Set([
