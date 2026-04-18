@@ -555,7 +555,7 @@ export default function App() {
         return;
       }
 
-      clearStaffSession();
+      /** Keep staff JWT in sessionStorage when a member Firebase session is active so admins can use Home then return to the admin portal without signing in again. */
 
       const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").trim();
       if (apiBaseUrl) {
@@ -647,6 +647,46 @@ export default function App() {
 
     return unsub;
   }, [applyLoadedProgress]);
+
+  /**
+   * After refresh (or first paint) with a Firebase user, rehydrate staff JWT from sessionStorage into React state.
+   * Staff session is no longer cleared on Firebase sign-in, so this keeps admin tools available without re-login.
+   */
+  useEffect(() => {
+    if (!authReady) return;
+    const api = (import.meta.env.VITE_API_BASE_URL || "").trim();
+    if (!api || !user) return;
+    if (staffAccessToken) return;
+    const staff = readStaffSession();
+    if (!staff) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const records = await PmesService.fetchAdminRecords(staff.token);
+        if (cancelled) return;
+        setStaffAccessToken(staff.token);
+        setStaffRole(staff.role);
+        setStaffSessionEmail(staff.email);
+        setMasterList(Array.isArray(records) ? records : []);
+        if (staff.role === "superuser") {
+          try {
+            const admins = await PmesService.listStaffAdmins(staff.token);
+            if (!cancelled) setManagedStaffAdmins(Array.isArray(admins) ? admins : []);
+          } catch {
+            if (!cancelled) setManagedStaffAdmins([]);
+          }
+        } else if (!cancelled) {
+          setManagedStaffAdmins([]);
+        }
+      } catch {
+        clearStaffSession();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user, staffAccessToken]);
 
   useEffect(() => {
     if (appState === "loi_success") {
@@ -1486,18 +1526,34 @@ export default function App() {
   /** `auth.currentUser` covers the brief window after sign-up before React `user` state updates. */
   const sessionUser = isFirebaseConfigured ? user ?? auth.currentUser : null;
 
-  /** Staff JWT session: show ribbon on admin dashboard and when previewing a certificate without Firebase member sign-in. */
+  /** Staff JWT session: show ribbon on admin dashboard, landing (when staff session retained), and certificate preview without member sign-in. */
   const staffForBanner =
-    staffSessionEmail && staffRole && (appState === "admin_dashboard" || (appState === "certificate" && staffAccessToken))
+    staffSessionEmail &&
+    staffRole &&
+    (appState === "admin_dashboard" ||
+      (appState === "landing" && staffAccessToken) ||
+      (appState === "certificate" && staffAccessToken))
       ? { email: staffSessionEmail, role: staffRole }
       : null;
   /** Ribbon shows first + last only (middle omitted; legacy full names → first token + last token). */
   const memberDisplayNameForBanner =
     displayNameFirstLast(formData, activeRecord?.fullName, user?.displayName) || "Member";
 
-  /** Fixed Home control on every flow screen except the marketing homepage. */
+  /** Home + optional Admin portal when a staff JWT is active; on landing, only Admin portal when staff is signed in. */
   const portalHomeBar =
-    appState !== "landing" ? <PortalHomeBar onGoHome={() => setAppState("landing")} /> : null;
+    appState === "landing" && staffAccessToken ? (
+      <PortalHomeBar
+        variant="adminOnly"
+        staffAccessToken={staffAccessToken}
+        onGoAdmin={() => setAppState("admin_dashboard")}
+      />
+    ) : appState !== "landing" ? (
+      <PortalHomeBar
+        onGoHome={() => setAppState("landing")}
+        staffAccessToken={staffAccessToken}
+        onGoAdmin={() => setAppState("admin_dashboard")}
+      />
+    ) : null;
 
   /** Passed PMES: session score or saved API record — hides “Continue PMES” on the landing page when complete. */
   const pmesExamPassed = Boolean(
