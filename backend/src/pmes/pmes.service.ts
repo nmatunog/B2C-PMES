@@ -17,6 +17,7 @@ import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import type { ImportLegacyPioneerRowDto } from "./dto/import-legacy-pioneers.dto";
 import type { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
+import type { AdminUpdateParticipantDto } from "./dto/admin-update-participant.dto";
 import {
   computeAlternatePublicHandle,
   normalizeLastNameKey,
@@ -208,6 +209,9 @@ export type MemberRegistryRow = {
   mailingAddress: string | null;
   civilStatus: string | null;
   memberIdNo: string | null;
+  tinNo: string | null;
+  /** Present when the member has linked Firebase (password reset applies). */
+  firebaseUid: string | null;
   loiAddress: string | null;
   fullProfileCompletedAt: string | null;
 };
@@ -940,6 +944,69 @@ export class PmesService {
     };
   }
 
+  /** Admin or superuser: correct core participant fields (DB + Firebase email when linked). */
+  async adminUpdateParticipant(participantId: string, dto: AdminUpdateParticipantDto) {
+    const p = await this.prisma.participant.findUnique({
+      where: { id: participantId },
+      include: { loiSubmission: true },
+    });
+    if (!p) throw new NotFoundException("Participant not found");
+
+    const data: Prisma.ParticipantUpdateInput = {};
+    if (dto.fullName !== undefined) data.fullName = dto.fullName.trim();
+    if (dto.phone !== undefined) data.phone = dto.phone.trim();
+    if (dto.dob !== undefined) data.dob = dto.dob.trim();
+    if (dto.gender !== undefined) data.gender = dto.gender.trim();
+    if (dto.mailingAddress !== undefined) {
+      data.mailingAddress = dto.mailingAddress.trim() ? dto.mailingAddress.trim() : null;
+    }
+    if (dto.civilStatus !== undefined) {
+      data.civilStatus = dto.civilStatus.trim() ? dto.civilStatus.trim() : null;
+    }
+    if (dto.tinNo !== undefined) {
+      const t = normalizeTinDigits(dto.tinNo);
+      data.tinNo = t || null;
+    }
+
+    if (dto.email !== undefined) {
+      const nextEmail = normalizeEmail(dto.email);
+      if (nextEmail !== p.email) {
+        const clash = await this.prisma.participant.findFirst({
+          where: { email: nextEmail, id: { not: participantId } },
+        });
+        if (clash) {
+          throw new ConflictException("That email is already used by another member record.");
+        }
+        if (p.firebaseUid) {
+          await this.auth.updateFirebasePrimaryEmail(p.firebaseUid, nextEmail);
+        }
+        data.email = nextEmail;
+      }
+    }
+
+    if (Object.keys(data).length > 0) {
+      await this.prisma.participant.update({
+        where: { id: participantId },
+        data,
+      });
+    }
+
+    return this.getParticipantAdminDetail(participantId);
+  }
+
+  /** Admin or superuser: set member Firebase password (member must have firebaseUid). */
+  async adminResetMemberPassword(participantId: string, newPassword: string) {
+    const p = await this.prisma.participant.findUnique({ where: { id: participantId } });
+    if (!p) throw new NotFoundException("Participant not found");
+    if (!p.firebaseUid?.trim()) {
+      throw new BadRequestException(
+        "This member has no Firebase account linked yet. They must sign in once (or sync) before a password can be set.",
+      );
+    }
+    await this.auth.updateFirebaseUserPassword(p.firebaseUid, newPassword);
+    return { success: true as const, message: "Password updated in Firebase Auth." };
+  }
+
   private resolveProfileForDerivation(p: Participant): unknown {
     if (p.memberProfileSnapshot != null) return p.memberProfileSnapshot;
     const env = parseFullProfileEnvelope(p.fullProfileJson);
@@ -971,6 +1038,8 @@ export class PmesService {
       mailingAddress,
       civilStatus,
       memberIdNo,
+      tinNo: p.tinNo?.trim() || null,
+      firebaseUid: p.firebaseUid ?? null,
       loiAddress: p.loiSubmission?.address ?? null,
       fullProfileCompletedAt: p.fullProfileCompletedAt?.toISOString() ?? null,
     };

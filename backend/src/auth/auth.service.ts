@@ -95,6 +95,20 @@ export class AuthService {
     return newEmail;
   }
 
+  /** Staff support: set a member’s Firebase password (requires service account). */
+  async updateFirebaseUserPassword(uid: string, newPassword: string): Promise<void> {
+    if (!newPassword || newPassword.length < 6) {
+      throw new BadRequestException("Password must be at least 6 characters.");
+    }
+    const app = this.getFirebaseAdminApp();
+    if (!app) {
+      throw new BadRequestException(
+        "Cannot reset password: configure Firebase service account (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).",
+      );
+    }
+    await admin.auth(app).updateUser(uid, { password: newPassword });
+  }
+
   private extractBearer(authorization: string | undefined): string | null {
     const v = String(authorization ?? "").trim();
     if (!v.toLowerCase().startsWith("bearer ")) return null;

@@ -437,6 +437,44 @@ export const PmesService = {
     return response.json();
   },
 
+  /** Admin or superuser: update core participant fields (Postgres + Firebase email when linked). */
+  async patchAdminParticipantProfile(accessToken, participantId, fields) {
+    if (!useRest()) throw new Error("API required");
+    const id = String(participantId ?? "").trim();
+    if (!id) throw new Error("Participant id required");
+    const response = await fetch(`${apiBase()}/pmes/admin/participants/${encodeURIComponent(id)}/profile`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(fields && typeof fields === "object" ? fields : {}),
+    });
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
+  /** Admin or superuser: set member Firebase password (member must have firebaseUid). */
+  async resetMemberFirebasePassword(accessToken, participantId, newPassword) {
+    if (!useRest()) throw new Error("API required");
+    const id = String(participantId ?? "").trim();
+    if (!id) throw new Error("Participant id required");
+    const response = await fetch(`${apiBase()}/pmes/admin/participants/${encodeURIComponent(id)}/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ newPassword: String(newPassword ?? "") }),
+    });
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
   /**
    * Superuser only: set or correct cooperative member ID (must be unique; syncs stored profile JSON when present).
    */

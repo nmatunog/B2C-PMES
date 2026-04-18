@@ -421,6 +421,14 @@ export default function App() {
   const [registryIncludeAll, setRegistryIncludeAll] = useState(false);
   const [registryLoading, setRegistryLoading] = useState(false);
   const [registryDetail, setRegistryDetail] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const [registryProfileDraft, setRegistryProfileDraft] = useState(
+    /** @type {null | { fullName: string; email: string; phone: string; dob: string; gender: string; tinNo: string; mailingAddress: string; civilStatus: string }} */ (
+      null
+    ),
+  );
+  const [registryProfileSaving, setRegistryProfileSaving] = useState(false);
+  const [memberResetPwd, setMemberResetPwd] = useState({ newPassword: "", confirm: "" });
+  const [memberResetPwdSaving, setMemberResetPwdSaving] = useState(false);
   const [superuserMemberIdDraft, setSuperuserMemberIdDraft] = useState("");
   const [superuserMemberIdSaving, setSuperuserMemberIdSaving] = useState(false);
   const audioCache = useRef({});
@@ -790,6 +798,31 @@ export default function App() {
     const id = setTimeout(() => setTtsError(null), 12000);
     return () => clearTimeout(id);
   }, [ttsError]);
+
+  /** Initialize editable fields when admin opens member registry detail. */
+  useEffect(() => {
+    if (!registryDetail || typeof registryDetail !== "object") {
+      setRegistryProfileDraft(null);
+      return;
+    }
+    const reg = /** @type {Record<string, unknown> | undefined} */ (registryDetail).registry;
+    if (!reg || typeof reg !== "object") {
+      setRegistryProfileDraft(null);
+      return;
+    }
+    const g = /** @type {Record<string, unknown>} */ (reg);
+    setRegistryProfileDraft({
+      fullName: String(g.fullName ?? ""),
+      email: String(g.email ?? ""),
+      phone: String(g.phone ?? ""),
+      dob: String(g.dob ?? ""),
+      gender: String(g.gender ?? ""),
+      tinNo: String(g.tinNo ?? ""),
+      mailingAddress: String(g.mailingAddress ?? ""),
+      civilStatus: String(g.civilStatus ?? ""),
+    });
+    setMemberResetPwd({ newPassword: "", confirm: "" });
+  }, [registryDetail]);
 
   const setCourseAudioEnabled = (enabled) => {
     if (!enabled) {
@@ -3905,6 +3938,201 @@ export default function App() {
                         </div>
                       ))}
                     </dl>
+                  ) : null}
+                  {registryProfileDraft && staffAccessToken ? (
+                    <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Edit member record</h3>
+                      <p className="mt-1 text-xs font-medium text-slate-600">
+                        Saves to the database. If this member has a linked Firebase account, changing email also updates Firebase
+                        Auth (requires server Firebase service account).
+                      </p>
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">Full name</span>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={registryProfileDraft.fullName}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, fullName: e.target.value } : d))}
+                            autoComplete="off"
+                          />
+                        </label>
+                        <label className="text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">Email (sign-in)</span>
+                          <input
+                            type="email"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={registryProfileDraft.email}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, email: e.target.value } : d))}
+                            autoComplete="off"
+                          />
+                        </label>
+                        <label className="text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">Phone</span>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={registryProfileDraft.phone}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, phone: e.target.value } : d))}
+                            autoComplete="off"
+                          />
+                        </label>
+                        <label className="text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">Date of birth</span>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={registryProfileDraft.dob}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, dob: e.target.value } : d))}
+                            autoComplete="off"
+                          />
+                        </label>
+                        <label className="text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">Gender</span>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={registryProfileDraft.gender}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, gender: e.target.value } : d))}
+                            autoComplete="off"
+                          />
+                        </label>
+                        <label className="text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">TIN (digits)</span>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono"
+                            value={registryProfileDraft.tinNo}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, tinNo: e.target.value } : d))}
+                            autoComplete="off"
+                          />
+                        </label>
+                        <label className="sm:col-span-2 text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">Mailing address</span>
+                          <textarea
+                            className="min-h-[4rem] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={registryProfileDraft.mailingAddress}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, mailingAddress: e.target.value } : d))}
+                            rows={2}
+                            spellCheck={false}
+                          />
+                        </label>
+                        <label className="text-xs font-bold text-slate-700">
+                          <span className="mb-1 block uppercase tracking-wide">Civil status</span>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={registryProfileDraft.civilStatus}
+                            onChange={(e) => setRegistryProfileDraft((d) => (d ? { ...d, civilStatus: e.target.value } : d))}
+                            autoComplete="off"
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={registryProfileSaving || !staffAccessToken}
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#004aad] px-5 py-2.5 text-sm font-black uppercase text-white hover:bg-[#003d99] disabled:opacity-50"
+                        onClick={async () => {
+                          if (!staffAccessToken || !registryProfileDraft) return;
+                          const reg = /** @type {Record<string, unknown>} */ (registryDetail).registry;
+                          const pid = reg && reg.participantId != null ? String(reg.participantId) : "";
+                          if (!pid) return;
+                          setRegistryProfileSaving(true);
+                          try {
+                            const detail = await PmesService.patchAdminParticipantProfile(
+                              staffAccessToken,
+                              pid,
+                              registryProfileDraft,
+                            );
+                            setRegistryDetail(detail);
+                            setAdminToast({ type: "success", message: "Member record updated." });
+                          } catch (e) {
+                            const msg = e instanceof Error ? e.message : String(e);
+                            setAdminToast({ type: "error", message: msg });
+                          } finally {
+                            setRegistryProfileSaving(false);
+                          }
+                        }}
+                      >
+                        {registryProfileSaving ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden /> : null}
+                        Save changes
+                      </button>
+                    </div>
+                  ) : null}
+                  {staffAccessToken && registryProfileDraft ? (
+                    <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50/90 p-4">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-indigo-950">Reset member password</h3>
+                      <p className="mt-1 text-xs font-medium text-indigo-950/90">
+                        Sets a new Firebase password immediately. Share it with the member through a secure channel.
+                      </p>
+                      {String(
+                        /** @type {Record<string, unknown> | undefined} */ (/** @type {Record<string, unknown>} */ (registryDetail).registry)?.firebaseUid ??
+                          "",
+                      ).trim() ? (
+                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                          <label className="min-w-0 flex-1 text-xs font-bold text-slate-700">
+                            <span className="mb-1 block uppercase tracking-wide">New password</span>
+                            <input
+                              type="password"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                              value={memberResetPwd.newPassword}
+                              onChange={(e) => setMemberResetPwd((p) => ({ ...p, newPassword: e.target.value }))}
+                              autoComplete="new-password"
+                            />
+                          </label>
+                          <label className="min-w-0 flex-1 text-xs font-bold text-slate-700">
+                            <span className="mb-1 block uppercase tracking-wide">Confirm</span>
+                            <input
+                              type="password"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                              value={memberResetPwd.confirm}
+                              onChange={(e) => setMemberResetPwd((p) => ({ ...p, confirm: e.target.value }))}
+                              autoComplete="new-password"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            disabled={memberResetPwdSaving || !staffAccessToken}
+                            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-indigo-700 px-4 py-2.5 text-xs font-black uppercase text-white hover:bg-indigo-800 disabled:opacity-50"
+                            onClick={async () => {
+                              if (!staffAccessToken) return;
+                              const reg = /** @type {Record<string, unknown>} */ (registryDetail).registry;
+                              const pid = reg && reg.participantId != null ? String(reg.participantId) : "";
+                              if (!pid) return;
+                              const a = String(memberResetPwd.newPassword ?? "").trim();
+                              const b = String(memberResetPwd.confirm ?? "").trim();
+                              if (a.length < 6) {
+                                setAdminToast({ type: "error", message: "Password must be at least 6 characters." });
+                                return;
+                              }
+                              if (a !== b) {
+                                setAdminToast({ type: "error", message: "Password and confirmation do not match." });
+                                return;
+                              }
+                              setMemberResetPwdSaving(true);
+                              try {
+                                await PmesService.resetMemberFirebasePassword(staffAccessToken, pid, a);
+                                setMemberResetPwd({ newPassword: "", confirm: "" });
+                                setAdminToast({ type: "success", message: "Member password updated in Firebase." });
+                              } catch (e) {
+                                const msg = e instanceof Error ? e.message : String(e);
+                                setAdminToast({ type: "error", message: msg });
+                              } finally {
+                                setMemberResetPwdSaving(false);
+                              }
+                            }}
+                          >
+                            {memberResetPwdSaving ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden /> : null}
+                            Set password
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm font-semibold text-indigo-900">
+                          No Firebase account is linked to this record yet. The member must sign in (or sync) once; then you can
+                          set a password here.
+                        </p>
+                      )}
+                    </div>
                   ) : null}
                   {staffRole === "superuser" && /** @type {Record<string, unknown>} */ (registryDetail).registry ? (
                     <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/90 p-4">

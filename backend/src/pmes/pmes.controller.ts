@@ -23,6 +23,8 @@ import { UpdateMemberLoginEmailDto } from "./dto/update-member-login-email.dto";
 import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import { SuperuserSetMemberIdDto } from "./dto/superuser-set-member-id.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
+import { AdminUpdateParticipantDto } from "./dto/admin-update-participant.dto";
+import { AdminResetMemberPasswordDto } from "./dto/admin-reset-member-password.dto";
 import { AuthService } from "../auth/auth.service";
 import { StaffJwtGuard } from "../auth/staff-jwt.guard";
 import { SuperuserGuard } from "../auth/superuser.guard";
@@ -176,6 +178,22 @@ export class PmesController {
   @UseGuards(StaffJwtGuard)
   adminParticipantDetail(@Param("id") id: string) {
     return this.pmes.getParticipantAdminDetail(id);
+  }
+
+  /** Admin or superuser: update core participant / member profile fields. */
+  @Patch("admin/participants/:id/profile")
+  @Throttle({ default: { limit: 40, ttl: 60000 } })
+  @UseGuards(StaffJwtGuard)
+  adminUpdateParticipantProfile(@Param("id") id: string, @Body() dto: AdminUpdateParticipantDto) {
+    return this.pmes.adminUpdateParticipant(id, dto);
+  }
+
+  /** Admin or superuser: set member Firebase password (requires Firebase Admin env). */
+  @Post("admin/participants/:id/reset-password")
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @UseGuards(StaffJwtGuard)
+  adminResetMemberPassword(@Param("id") id: string, @Body() dto: AdminResetMemberPasswordDto) {
+    return this.pmes.adminResetMemberPassword(id, dto.newPassword);
   }
 
   /** Superuser only: replace auto-generated member ID (wrong cohort year, correction, etc.). */

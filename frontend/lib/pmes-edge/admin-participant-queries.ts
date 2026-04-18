@@ -156,6 +156,10 @@ export type ParticipantDetailRow = AdminLifecycleRow & {
   fullProfileJson: string | null;
   memberProfileSnapshot: unknown | null;
   registryImportSnapshot: unknown | null;
+  firebaseUid: string | null;
+  tinNo: string | null;
+  mailingAddress: string | null;
+  civilStatus: string | null;
 };
 
 type ParticipantDetailWithOptionalStamp = Omit<ParticipantDetailRow, "memberProfileConcurrencyStamp"> & {
@@ -166,6 +170,10 @@ function normalizeDetailRow(row: ParticipantDetailWithOptionalStamp): Participan
   return {
     ...row,
     memberProfileConcurrencyStamp: row.memberProfileConcurrencyStamp ?? 0,
+    firebaseUid: row.firebaseUid ?? null,
+    tinNo: row.tinNo ?? null,
+    mailingAddress: row.mailingAddress ?? null,
+    civilStatus: row.civilStatus ?? null,
   };
 }
 
@@ -194,6 +202,10 @@ export async function selectParticipantDetailRow(
         p."fullProfileJson",
         p."memberProfileSnapshot",
         p."registryImportSnapshot",
+        p."firebaseUid",
+        p."tinNo",
+        p."mailingAddress",
+        p."civilStatus",
         EXISTS (
           SELECT 1 FROM "PmesRecord" pr
           WHERE pr."participantId" = p.id AND pr.passed = true
@@ -229,6 +241,10 @@ export async function selectParticipantDetailRow(
         p."fullProfileJson",
         p."memberProfileSnapshot",
         p."registryImportSnapshot",
+        p."firebaseUid",
+        p."tinNo",
+        p."mailingAddress",
+        p."civilStatus",
         EXISTS (
           SELECT 1 FROM "PmesRecord" pr
           WHERE pr."participantId" = p.id AND pr.passed = true
