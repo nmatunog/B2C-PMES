@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { B2CLogo } from "../components/B2CLogo.jsx";
+import { B2CLogo, BRAND_SUBTITLE_CLASS, BRAND_TITLE_CLASS } from "../components/B2CLogo.jsx";
 import { COOPERATIVE_NAME, COOPERATIVE_REGION, PUBLIC_MEMBER_COUNT } from "../constants/cooperativeBrand.js";
 import { PRIVACY_NOTICE_HEADING, PRIVACY_NOTICE_PARAGRAPHS } from "../constants/privacyAgreement.js";
 import { EarningsSimulator } from "./EarningsSimulator.jsx";
@@ -602,7 +602,7 @@ export default function LandingPage({
         </div>
         <div className="flex shrink-0 items-center justify-between px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex items-center gap-3">
-            <B2CLogo size="xs" className="h-8 max-w-[100px] shrink-0 sm:h-9" />
+            <B2CLogo size="sm" className="shrink-0" />
             <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Guided intro</span>
           </div>
           <button
@@ -776,19 +776,19 @@ export default function LandingPage({
 
       <nav
         className={`fixed left-0 top-0 z-50 w-full transition-all duration-300 ${
-          scrolled ? "glass-nav-scrolled py-3" : "glass-nav py-4 sm:py-5"
+          scrolled ? "glass-nav-scrolled py-2.5 sm:py-3 md:py-3.5" : "glass-nav py-3 sm:py-4 md:py-5"
         }`}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a href="/" className="flex min-w-0 items-center gap-3 sm:gap-4" aria-label="Home">
-            <B2CLogo size="md" className="h-10 max-w-[180px] shrink-0 sm:h-12 sm:max-w-[220px] lg:h-14 lg:max-w-[260px]" />
-            <div className="min-w-0 flex flex-col leading-tight">
-              <span className="truncate text-base font-bold tracking-tight text-stone-900 sm:text-xl lg:text-2xl">
-                {COOPERATIVE_NAME}
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-600 sm:text-sm">
-                {COOPERATIVE_REGION}
-              </span>
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-6 lg:gap-4 lg:px-8">
+          <a
+            href="/"
+            className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:flex-initial sm:flex-row sm:items-center sm:gap-3 md:gap-4"
+            aria-label="Home"
+          >
+            <B2CLogo size="nav" priority className="shrink-0" />
+            <div className="flex w-full min-w-0 flex-col leading-tight sm:w-auto">
+              <span className={`${BRAND_TITLE_CLASS} sm:truncate`}>{COOPERATIVE_NAME}</span>
+              <span className={BRAND_SUBTITLE_CLASS}>{COOPERATIVE_REGION}</span>
             </div>
           </a>
           <div className="hidden items-center gap-6 text-sm font-medium lg:flex xl:gap-8">
@@ -917,7 +917,7 @@ export default function LandingPage({
       </nav>
 
       <main id="main-content">
-      <section className="mesh-hero relative overflow-hidden pt-[5rem] sm:pt-[5.5rem] lg:pt-[6.25rem]">
+      <section className="mesh-hero relative overflow-hidden pt-[7.5rem] sm:pt-[6.25rem] md:pt-[6rem] lg:pt-[6.5rem]">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl sm:h-80 sm:w-80" aria-hidden />
           <div className="absolute -right-16 top-40 h-56 w-56 rounded-full bg-sky-400/22 blur-3xl sm:h-72 sm:w-72" aria-hidden />
@@ -1242,11 +1242,11 @@ export default function LandingPage({
       <footer className="glass-footer py-16 sm:py-20">
         <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 md:grid-cols-3 md:gap-14 lg:px-8">
           <div className="col-span-1">
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-              <B2CLogo size="md" className="shrink-0" />
+            <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:flex-wrap sm:items-center md:gap-5">
+              <B2CLogo size="lg" className="shrink-0" />
               <div className="min-w-0 flex flex-col leading-tight">
-                <span className="text-lg font-bold tracking-tight text-stone-900 sm:text-xl">{COOPERATIVE_NAME}</span>
-                <span className="text-xs font-semibold uppercase tracking-wide text-stone-600">{COOPERATIVE_REGION}</span>
+                <span className={BRAND_TITLE_CLASS}>{COOPERATIVE_NAME}</span>
+                <span className={BRAND_SUBTITLE_CLASS}>{COOPERATIVE_REGION}</span>
               </div>
             </div>
             <p className="mb-6 max-w-sm text-base leading-relaxed text-stone-600">

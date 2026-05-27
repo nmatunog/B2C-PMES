@@ -13,9 +13,11 @@
 @layer components {
   .glass-nav {
     @apply border-b border-white/35 bg-white/45 shadow-sm shadow-stone-900/[0.03] backdrop-blur-xl backdrop-saturate-150;
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   }
   .glass-nav-scrolled {
     @apply border-b border-stone-200/70 bg-white/72 shadow-md shadow-stone-900/[0.06] backdrop-blur-2xl backdrop-saturate-150;
+    padding-top: max(0.625rem, env(safe-area-inset-top, 0px));
   }
   .glass-badge {
     @apply border border-sky-200/35 bg-white/60 shadow-md shadow-indigo-900/[0.04] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-white/50;

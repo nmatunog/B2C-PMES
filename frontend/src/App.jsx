@@ -310,7 +310,7 @@ function isPlaceholderRegistryLoginEmail(raw) {
 function formatTtsError(err) {
   const raw = err instanceof Error ? err.message : String(err);
   if (raw.includes("503") && /TTS is disabled|AI_PROVIDER=noop/i.test(raw)) {
-    return "Course audio is turned off on the server to save AI quota. You can still read all PMES text on screen.";
+    return "Course audio is unavailable at the moment. Proceed with no audio.";
   }
   if (raw.includes("500") || raw.includes("Gemini TTS failed")) {
     return "Voice could not be generated. Check API settings (GEMINI_API_KEY and AI_PROVIDER) or turn course audio off.";
@@ -1935,7 +1935,7 @@ export default function App() {
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-blue-400/20 blur-2xl" aria-hidden />
             <div className="relative z-10 mb-8">
-              <B2CLogo size="lg" className="max-w-[min(100%,15rem)] drop-shadow-md md:h-16" />
+              <B2CLogo size="lg" className="max-w-[min(100%,18rem)] drop-shadow-md md:max-w-[20rem] lg:max-w-[22rem]" />
             </div>
             <p className="relative z-10 text-xs font-black uppercase tracking-[0.25em] text-white/70">B2CCoop WebApp</p>
             <h1 className="relative z-10 mt-4 max-w-md text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-[2.35rem] md:leading-[1.15]">
@@ -1958,7 +1958,7 @@ export default function App() {
           <div className="flex flex-1 items-center justify-center bg-slate-100/90 px-5 py-10 sm:px-10 sm:bg-[#f1f5f9] sm:py-12">
             <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-900/5 sm:p-10 sm:rounded-[2.25rem]">
               <div className="mb-6 flex justify-center sm:hidden">
-                <B2CLogo size="md" align="center" className="max-w-[13rem]" />
+                <B2CLogo size="nav" align="center" />
               </div>
               <div className="text-center sm:text-left">
                 <p className="text-xs font-black uppercase tracking-widest text-[#004aad]/80">Member access</p>
@@ -2005,7 +2005,7 @@ export default function App() {
             <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 rounded-full bg-blue-400/15 blur-2xl" aria-hidden />
             <div className="relative z-10 mb-8">
-              <B2CLogo size="lg" className="max-w-[min(100%,15rem)] drop-shadow-md md:h-16" />
+              <B2CLogo size="lg" className="max-w-[min(100%,18rem)] drop-shadow-md md:max-w-[20rem] lg:max-w-[22rem]" />
             </div>
             <p className="relative z-10 text-xs font-black uppercase tracking-[0.25em] text-white/70">Member account</p>
             <h1 className="relative z-10 mt-4 max-w-lg text-3xl font-black leading-[1.12] tracking-tight sm:text-4xl md:text-[2.5rem] xl:text-[2.75rem]">
@@ -2035,7 +2035,7 @@ export default function App() {
               className="w-full max-w-xl rounded-[1.75rem] border border-slate-200/90 bg-white p-7 shadow-xl shadow-slate-900/[0.06] sm:max-w-2xl sm:rounded-[2rem] sm:p-10"
             >
               <div className="mb-5 flex justify-center sm:hidden">
-                <B2CLogo size="md" align="center" className="max-w-[12rem]" />
+                <B2CLogo size="nav" align="center" />
               </div>
               <div className="text-center sm:text-left">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#004aad]/10 text-[#004aad] sm:mx-0 sm:mb-5 sm:h-14 sm:w-14">
@@ -2671,18 +2671,20 @@ export default function App() {
         <div className="min-h-screen px-4 py-8 sm:px-6 md:py-12 lg:px-8">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
         <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl md:rounded-[2.5rem] lg:rounded-[3rem]">
-          <div className="flex flex-col gap-4 bg-[#004aad] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:gap-6 md:p-10">
-            <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-6">
-              <B2CLogo size="xs" className="shrink-0 drop-shadow-sm sm:h-10 sm:max-w-[170px]" />
+          <div className="flex flex-col gap-4 bg-[#004aad] p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6 md:p-8 lg:p-10">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 md:gap-6">
+              <B2CLogo size="nav" priority className="shrink-0 self-start drop-shadow-sm" />
+              <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4 md:gap-5">
               {(() => {
                 const Icon = modules[currentStep].icon;
-                return <Icon className="h-11 w-11 shrink-0 md:h-14 md:w-14" aria-hidden />;
+                return <Icon className="h-10 w-10 shrink-0 sm:h-11 sm:w-11 md:h-14 md:w-14" aria-hidden />;
               })()}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-white/80">Current module</p>
-                <h2 className="text-2xl font-bold leading-tight tracking-tight md:text-3xl lg:text-4xl">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/80 sm:text-xs">Current module</p>
+                <h2 className="text-xl font-bold leading-tight tracking-tight sm:text-2xl md:text-3xl lg:text-4xl">
                   {modules[currentStep].title}
                 </h2>
+              </div>
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 self-start sm:self-auto">
@@ -2792,7 +2794,7 @@ export default function App() {
         <div className="min-h-screen px-8 py-16">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
         <div className="mx-auto mb-10 flex max-w-5xl items-center justify-between gap-4">
-          <B2CLogo size="sm" className="shrink-0" />
+          <B2CLogo size="nav" className="shrink-0" />
           <button
             type="button"
             onClick={goHomeFromPmes}
@@ -3871,11 +3873,11 @@ export default function App() {
         <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:p-12">
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
         <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl bg-white shadow-xl lg:rounded-[2.5rem]">
-          <div className="flex flex-col gap-6 bg-[#004aad] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-10">
-            <div className="flex items-center gap-4">
-              <B2CLogo size="lg" className="shrink-0" />
+          <div className="flex flex-col gap-5 bg-[#004aad] p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-8 md:p-10">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 md:gap-5">
+              <B2CLogo size="nav" className="shrink-0 self-start drop-shadow-sm" />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-white/80">Admin</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/80 sm:text-xs">Admin</p>
                 <h1 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">PMES master list</h1>
               </div>
             </div>

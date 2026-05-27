@@ -949,7 +949,7 @@ export function MemberFullProfileForm({
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-6">
           <div className="flex shrink-0 justify-center sm:justify-start">
-            <B2CLogo size="sm" className="max-h-9 sm:max-h-10" />
+            <B2CLogo size="sm" className="max-h-10 sm:max-h-11 md:max-h-12" />
           </div>
           <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#004aad]">Official address</p>
