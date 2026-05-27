@@ -1352,7 +1352,7 @@ export function MemberFullProfileForm({
         <Text label="Province" value={pa.province} onChange={(v) => setPresent({ province: v })} required />
         <Text label="City / Municipality" value={pa.cityMunicipality} onChange={(v) => setPresent({ cityMunicipality: v })} required />
         <Text label="Barangay" value={pa.barangay} onChange={(v) => setPresent({ barangay: v })} />
-        <Text label="Subdivision" value={pa.subdivision} onChange={(v) => setPresent({ subdivision: v })} required />
+        <Text label="Subdivision" value={pa.subdivision} onChange={(v) => setPresent({ subdivision: v })} />
         <Text label="Street" value={pa.street} onChange={(v) => setPresent({ street: v })} required />
         <Text label="House No." value={pa.houseNo} onChange={(v) => setPresent({ houseNo: v })} required />
         <Text label="Postal code" value={pa.postalCode} onChange={(v) => setPresent({ postalCode: v })} />

@@ -66,9 +66,11 @@ import { MessengerPaymentQr, MESSENGER_PAYMENT_CHAT_URL } from "./components/Mes
 import { PortalHomeBar } from "./components/PortalHomeBar.jsx";
 import { B2CLogo } from "./components/B2CLogo.jsx";
 import { ReferralEngine } from "./components/ReferralEngine.jsx";
+import { MemberSpotlight } from "./components/MemberSpotlight.jsx";
 import { MemberLifecyclePortal } from "./components/MemberLifecyclePortal.jsx";
 import { MemberSubmissionAckScreen } from "./components/MemberSubmissionAckScreen.jsx";
 import { PIONEER_POINTS_PER_JOIN } from "./lib/referralTiers.js";
+import { PUBLIC_MEMBER_COUNT } from "./constants/cooperativeBrand.js";
 import { derivePmesIntent } from "./lib/pmesIntent.js";
 import {
   getJoinPipelineBanner,
@@ -3780,6 +3782,12 @@ export default function App() {
                 pioneerPoints={pioneerPoints}
                 invitesThisMonth={pioneerReferralStatsPortal.invitesThisMonth}
               />
+            ) : null}
+
+            {user ? (
+              <div className="-mx-4 sm:-mx-8">
+                <MemberSpotlight membersOnly memberCount={PUBLIC_MEMBER_COUNT} />
+              </div>
             ) : null}
           </div>
         </div>

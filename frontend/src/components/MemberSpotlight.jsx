@@ -7,9 +7,9 @@ import { VERIFIED_PIONEERS } from "../data/verifiedPioneers.js";
  * “Verified pioneers” wall — bridges earnings simulator and membership path.
  * Light mesh section, glass cards, live pulse for Cebu-local movement feel.
  *
- * @param {{ onJoinClick?: () => void, memberCount?: number }} props
+ * @param {{ onJoinClick?: () => void, memberCount?: number, membersOnly?: boolean }} props
  */
-export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT }) {
+export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT, membersOnly = false }) {
   const nextSlot = memberCount + 1;
 
   return (
@@ -44,8 +44,9 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
               </span>
             </h2>
             <p className="mt-4 max-w-xl text-base font-medium leading-relaxed text-stone-600 sm:text-lg">
-              From estimates to people — meet neighbors already in the movement. Names and areas are from our verified registry;
-              this grid is a sample of the full membership.
+              {membersOnly
+                ? "Meet neighbors already in the movement. Names and areas come from our verified registry — this grid is a sample of the cooperative membership."
+                : "From estimates to people — meet neighbors already in the movement. Names and areas are from our verified registry; this grid is a sample of the full membership."}
             </p>
           </div>
 
@@ -96,18 +97,20 @@ export function MemberSpotlight({ onJoinClick, memberCount = PUBLIC_MEMBER_COUNT
             </article>
           ))}
 
-          <button
-            type="button"
-            onClick={onJoinClick}
-            className={`group relative flex min-h-[168px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-indigo-600 via-blue-700 to-sky-800 p-4 text-center shadow-xl shadow-indigo-950/25 transition-all duration-300 hover:scale-[1.02] hover:from-indigo-500 hover:via-blue-600 hover:to-sky-700 hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 sm:min-h-[176px] sm:rounded-3xl sm:p-5`}
-          >
-            <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
-            <span className="relative z-10 mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 text-white backdrop-blur-sm transition-transform duration-500 group-hover:rotate-90 sm:h-12 sm:w-12">
-              <Plus className="h-6 w-6 stroke-[2.5]" aria-hidden />
-            </span>
-            <span className="relative z-10 text-xs font-extrabold uppercase tracking-[0.2em] text-white">Pioneer #{nextSlot}</span>
-            <span className="relative z-10 mt-2 text-[10px] font-semibold text-sky-100/90">Reserved for you</span>
-          </button>
+          {!membersOnly && onJoinClick ? (
+            <button
+              type="button"
+              onClick={onJoinClick}
+              className={`group relative flex min-h-[168px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-indigo-600 via-blue-700 to-sky-800 p-4 text-center shadow-xl shadow-indigo-950/25 transition-all duration-300 hover:scale-[1.02] hover:from-indigo-500 hover:via-blue-600 hover:to-sky-700 hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 sm:min-h-[176px] sm:rounded-3xl sm:p-5`}
+            >
+              <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+              <span className="relative z-10 mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 text-white backdrop-blur-sm transition-transform duration-500 group-hover:rotate-90 sm:h-12 sm:w-12">
+                <Plus className="h-6 w-6 stroke-[2.5]" aria-hidden />
+              </span>
+              <span className="relative z-10 text-xs font-extrabold uppercase tracking-[0.2em] text-white">Pioneer #{nextSlot}</span>
+              <span className="relative z-10 mt-2 text-[10px] font-semibold text-sky-100/90">Reserved for you</span>
+            </button>
+          ) : null}
         </div>
       </div>
     </section>
