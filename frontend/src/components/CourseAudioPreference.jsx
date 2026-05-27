@@ -6,9 +6,9 @@ const STORAGE_KEY = "b2ccoop-webapp-course-audio";
 export function readCourseAudioPreference() {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    return v !== "0";
+    return v === "1";
   } catch {
-    return true;
+    return false;
   }
 }
 

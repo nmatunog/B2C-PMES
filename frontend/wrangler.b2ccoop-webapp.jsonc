@@ -6,7 +6,7 @@
 	"vars": {
 		"FIREBASE_PROJECT_ID": "b2ccoop-87114",
 		"LANDING_CHAT_PROVIDER": "gemini",
-		"AI_PROVIDER": "gemini"
+		"AI_PROVIDER": "noop"
 	},
 	"compatibility_date": "2026-04-13",
 	"compatibility_flags": [

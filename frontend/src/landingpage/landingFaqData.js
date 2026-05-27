@@ -15,7 +15,7 @@ export const LANDING_FAQ_ASSISTANT = {
     closeLabel: `Close ${N}`,
     placeholder: "Ask about fees, shares, joining…",
     send: "Send",
-    welcome: `Hi — I’m ${N}. The chips below give **verified** answers from our intro and by-laws. For anything else, I’ll try a short **AI** reply when your site has it enabled — otherwise I’ll nudge you back to the topics or **By-Laws**.`,
+    welcome: `Hi — I’m ${N}. Tap a **chip** below for verified answers (no AI cost). For other questions I’ll use a short **AI** reply when enabled — **repeat questions are cached** on your device and our server to save quota.`,
     noMatch:
       "I don’t have a scripted answer for that. Try one of the five topics below, or open **By-Laws** in the footer for the full document.",
     aiDisabled:
@@ -31,7 +31,7 @@ export const LANDING_FAQ_ASSISTANT = {
     closeLabel: `Sirhi si ${N}`,
     placeholder: "Pangutana bahin sa bayad, shares, pag-apil…",
     send: "Padala",
-    welcome: `Kumusta — ako si ${N}. Ang mga chip sa ubos kay **verified** gikan sa intro ug by-laws. Kung laing pangutana, suwayon nako ang **AI** kon naka-on ang site — kung dili, balik sa topics o **By-Laws**.`,
+    welcome: `Kumusta — ako si ${N}. Pindota ang **chip** sa ubos para sa verified nga tubag. Sa ubang pangutana, **AI** kon naka-on — ang **balik-balik nga pangutana na-cache** sa imong device ug server.`,
     noMatch:
       "Walay fixed nga tubag ana. Sulayi ang lima ka topic sa ubos, o ablihi ang **By-Laws** sa footer para sa full document.",
     aiDisabled:

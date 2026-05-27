@@ -309,8 +309,11 @@ function isPlaceholderRegistryLoginEmail(raw) {
 
 function formatTtsError(err) {
   const raw = err instanceof Error ? err.message : String(err);
+  if (raw.includes("503") && /TTS is disabled|AI_PROVIDER=noop/i.test(raw)) {
+    return "Course audio is turned off on the server to save AI quota. You can still read all PMES text on screen.";
+  }
   if (raw.includes("500") || raw.includes("Gemini TTS failed")) {
-    return "Voice could not be generated. Restart the API server after saving backend/.env, or check GEMINI_API_KEY and AI_PROVIDER.";
+    return "Voice could not be generated. Check API settings (GEMINI_API_KEY and AI_PROVIDER) or turn course audio off.";
   }
   if (raw.length > 180) {
     return `${raw.slice(0, 180)}…`;

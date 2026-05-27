@@ -103,8 +103,8 @@ Configure in the Worker → **Settings** → **Variables** and **Secrets**.
 
 **Non-secret (declared in `wrangler.b2ccoop-webapp.jsonc` `vars`):**
 
-- `LANDING_CHAT_PROVIDER` — `gemini` \| `noop` (landing Ka-uban text)  
-- `AI_PROVIDER` — `gemini` \| `openai` \| `grok` \| `noop` (TTS)  
+- `LANDING_CHAT_PROVIDER` — `gemini` \| `noop` (landing Ka-uban text; uses server + browser cache)  
+- `AI_PROVIDER` — `noop` in production by default (TTS off to preserve free-tier quota); set `gemini` \| `openai` \| `grok` when enabling voice  
 - Optional: `MEMBER_SYNC_SECRET`; `FIREBASE_PRIVATE_KEY` / `FIREBASE_CLIENT_EMAIL` if you use Nest-style Admin verification  
 
 **Typical non-secret / public:**

@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
-import { generateLandingChatReply, type LandingChatLanguage } from "@/lib/ai/landing-chat-gemini";
+import {
+  landingChatCacheKey,
+  normalizeLandingChatMessage,
+  type LandingChatLanguage,
+} from "@/lib/ai/landing-chat-cache";
+import { generateLandingChatReply } from "@/lib/ai/landing-chat-gemini";
 
 /** In-process cache (best-effort; Edge isolates may not persist long). */
 const cache = new Map<string, { text: string }>();
-const CACHE_MAX = 48;
-const CACHE_VERSION = 1;
+const CACHE_MAX = 128;
+const CACHE_VERSION = 2;
 
-async function cacheKey(providerId: string, message: string, language: LandingChatLanguage): Promise<string> {
-  const raw = `${CACHE_VERSION}|${providerId}|${language}|${message}`;
+async function cacheKeyHash(providerId: string, language: LandingChatLanguage, message: string): Promise<string> {
+  const raw = `${CACHE_VERSION}|${providerId}|${landingChatCacheKey(language, message)}`;
   const data = new TextEncoder().encode(raw);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest))
@@ -32,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Invalid JSON body", statusCode: 400 }, { status: 400 });
   }
 
-  const message = String(body.message ?? "").trim();
+  const message = normalizeLandingChatMessage(String(body.message ?? ""));
   if (!message.length || message.length > 1200) {
     return NextResponse.json({ message: "message is required (1–1200 characters)", statusCode: 400 }, { status: 400 });
   }
@@ -62,10 +67,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const key = await cacheKey("gemini", message, language);
+    const key = await cacheKeyHash("gemini", language, message);
     const hit = cache.get(key);
     if (hit) {
-      return NextResponse.json({ text: hit.text });
+      return NextResponse.json({ text: hit.text, cached: true });
     }
 
     const text = await generateLandingChatReply(message, language);
@@ -74,7 +79,7 @@ export async function POST(request: Request) {
       if (first) cache.delete(first);
     }
     cache.set(key, { text });
-    return NextResponse.json({ text });
+    return NextResponse.json({ text, cached: false });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Landing chat failed";
     return NextResponse.json({ message: msg, statusCode: 500 }, { status: 500 });
