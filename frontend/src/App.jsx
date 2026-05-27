@@ -331,16 +331,27 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   /** Store `?ref=PIONEER-...` for POST /auth/sync-member; strip from URL after capture. */
+  /** Open staff admin directly: http://localhost:5173/?admin=1 */
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const params = new URLSearchParams(window.location.search);
       const ref = params.get("ref")?.trim();
+      const wantsAdmin = params.get("admin");
+      let changed = false;
       if (ref) {
         if (!sessionStorage.getItem("b2ccoop_webapp_referral_code")) {
           sessionStorage.setItem("b2ccoop_webapp_referral_code", ref);
         }
         params.delete("ref");
+        changed = true;
+      }
+      if (wantsAdmin === "1" || wantsAdmin === "true") {
+        params.delete("admin");
+        changed = true;
+        setAppState("admin_login");
+      }
+      if (changed) {
         const qs = params.toString();
         const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
         window.history.replaceState({}, "", next);
@@ -3882,6 +3893,22 @@ export default function App() {
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+              {(() => {
+                const accountingUrl = (import.meta.env.VITE_ACCOUNTING_APP_URL || "").trim();
+                const canTreasury =
+                  staffRole === "treasurer" || staffRole === "admin" || staffRole === "superuser";
+                if (!accountingUrl || !canTreasury) return null;
+                return (
+                  <a
+                    href={accountingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-white/15 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-white ring-1 ring-white/30 hover:bg-white/25"
+                  >
+                    Treasury
+                  </a>
+                );
+              })()}
               {staffAccessToken ? (
                 <button
                   type="button"

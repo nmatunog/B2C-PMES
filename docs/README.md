@@ -6,6 +6,7 @@
 | [../DEVELOPMENT.md](../DEVELOPMENT.md) | Local setup, env vars, Firestore paths, Git workflow, troubleshooting |
 | [OPERATIONS.md](./OPERATIONS.md) | **Production:** Cloudflare split (Pages + Worker), deploy commands, CORS, domains, Firebase |
 | [RENAME-CUTOVER.md](./RENAME-CUTOVER.md) | Rename from B2C-PMES → B2CCoop WebApp (Cloudflare, Firestore, local DB) |
+| [ACCOUNTING-INTEGRATION.md](./ACCOUNTING-INTEGRATION.md) | Separate accounting product — IDs, API contract, env seam for WebApp |
 | [../frontend/CLOUDFLARE.md](../frontend/CLOUDFLARE.md) | OpenNext on Cloudflare Workers (Wrangler, build, dashboard checklist) |
 | [deploy-neon.md](./deploy-neon.md) | Neon Postgres for Nest/Prisma production |
 | [../.cursor/rules/](../.cursor/rules/) | AI-assisted development conventions (Nest AI, commits, stack) |

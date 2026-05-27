@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { postInitialFeesPaid } from "@/lib/accounting-integration";
 import { getSql } from "@/lib/db";
 import { EDGE_CORS_HEADERS, edgeCorsOptions } from "@/lib/edge-cors";
 import { requireStaff, unauthorized, forbidden } from "@/lib/staff-edge-auth";
@@ -42,6 +43,23 @@ export async function PATCH(request: Request) {
     }
 
     const sql = getSql();
+    const beforeRows = initialFeesPaid
+      ? await sql`
+          SELECT id, email, "memberIdNo", "fullName", "initialFeesPaidAt"
+          FROM "Participant"
+          WHERE id = ${participantId}
+        `
+      : [];
+    const before = beforeRows[0] as
+      | {
+          id: string;
+          email: string;
+          memberIdNo: string | null;
+          fullName: string | null;
+          initialFeesPaidAt: Date | null;
+        }
+      | undefined;
+
     await sql`
       UPDATE "Participant"
       SET
@@ -49,6 +67,15 @@ export async function PATCH(request: Request) {
         "boardApprovedAt" = CASE WHEN ${boardApproved} THEN NOW() ELSE "boardApprovedAt" END
       WHERE id = ${participantId}
     `;
+
+    if (initialFeesPaid && before && !before.initialFeesPaidAt) {
+      postInitialFeesPaid({
+        participantId: before.id,
+        memberIdNo: before.memberIdNo,
+        email: before.email,
+        fullName: before.fullName,
+      });
+    }
 
     const row = await selectAdminLifecycleRowByParticipantId(sql, participantId);
     if (!row) {

@@ -813,6 +813,15 @@ export default function LandingPage({
             >
               Portal
             </button>
+            {onAdminPortal ? (
+              <button
+                type="button"
+                onClick={() => onAdminPortal()}
+                className="font-medium text-[#004aad] transition-colors hover:text-blue-800"
+              >
+                Staff admin
+              </button>
+            ) : null}
             {isFirebaseConfigured && onPioneerReclaim ? (
               <button
                 type="button"
@@ -877,6 +886,18 @@ export default function LandingPage({
                 <LogIn className="h-4 w-4" />
                 Portal
               </button>
+              {onAdminPortal ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onAdminPortal();
+                  }}
+                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 py-2.5 font-semibold text-[#004aad]"
+                >
+                  Staff admin
+                </button>
+              ) : null}
               {isFirebaseConfigured && onPioneerReclaim ? (
                 <button
                   type="button"

@@ -10,6 +10,7 @@ import {
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { AuthService } from "../auth/auth.service";
+import { AccountingClientService } from "../integrations/accounting-client.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateLoiDto } from "./dto/create-loi.dto";
 import { CreatePmesDto } from "./dto/create-pmes.dto";
@@ -234,6 +235,7 @@ export class PmesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
+    private readonly accounting: AccountingClientService,
   ) {}
 
   /** Upsert participant by email, append PMES attempt; returns flat shape for the existing UI. */
@@ -593,6 +595,16 @@ export class PmesService {
         loiSubmission: true,
       },
     });
+
+    if (dto.initialFeesPaid === true && !p.initialFeesPaidAt) {
+      this.accounting.postInitialFeesPaid({
+        participantId: p.id,
+        memberIdNo: p.memberIdNo,
+        email: p.email,
+        fullName: p.fullName,
+      });
+    }
+
     const votes = await this.prisma.boardApprovalVote.count({
       where: { participantId: dto.participantId, approve: true },
     });

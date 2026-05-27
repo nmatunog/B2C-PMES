@@ -40,6 +40,13 @@ export class AuthController {
     return this.auth.staffLogin(dto.email, dto.password);
   }
 
+  /** Firebase Google sign-in → staff JWT when token email matches `StaffUser`. */
+  @Post("staff/firebase-session")
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  staffFirebaseSession(@Headers("authorization") authorization: string | undefined) {
+    return this.auth.staffSessionFromFirebase(authorization);
+  }
+
   /** Logged-in staff (admin/superuser): change own password. */
   @Patch("staff/password")
   @Throttle({ default: { limit: 10, ttl: 60000 } })

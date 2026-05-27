@@ -3,6 +3,8 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -263,6 +265,63 @@ export class AuthService {
     const roleJwt = staffRoleToJwt(staff.role);
     const accessToken = this.jwt.sign({ role: roleJwt, sub: staff.id });
     return { accessToken, expiresIn: "8h", role: roleJwt, dbRole: staff.role };
+  }
+
+  /**
+   * Issue staff JWT when Firebase ID token email matches a `StaffUser` row
+   * (same as Worker `POST /api/auth/staff/firebase-session`).
+   */
+  async staffSessionFromFirebase(
+    authorization: string | undefined,
+  ): Promise<StaffLoginResponse & { email: string }> {
+    const bearer = String(authorization ?? "")
+      .trim()
+      .replace(/^Bearer\s+/i, "")
+      .trim();
+    if (!bearer) {
+      throw new UnauthorizedException("Missing Authorization: Bearer <Firebase ID token>");
+    }
+    if (!this.isFirebaseAdminConfigured()) {
+      throw new ServiceUnavailableException(
+        "Firebase Admin is not configured (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).",
+      );
+    }
+    const app = this.getFirebaseAdminApp();
+    if (!app) {
+      throw new ServiceUnavailableException("Firebase Admin is not configured");
+    }
+
+    let decoded: admin.auth.DecodedIdToken;
+    try {
+      decoded = await admin.auth(app).verifyIdToken(bearer);
+    } catch {
+      throw new UnauthorizedException("Invalid or expired Firebase ID token");
+    }
+
+    const rawEmail = typeof decoded.email === "string" ? decoded.email.trim() : "";
+    if (!rawEmail) {
+      throw new BadRequestException(
+        "Your Google account has no email on this token; add an email to use staff tools.",
+      );
+    }
+
+    const norm = rawEmail.toLowerCase();
+    const staff = await this.prisma.staffUser.findUnique({ where: { email: norm } });
+    if (!staff) {
+      throw new NotFoundException(
+        "No cooperative staff account uses this Google email yet. Sign in with staff email and password, or ask a superuser to create one for this address.",
+      );
+    }
+
+    const roleJwt = staffRoleToJwt(staff.role);
+    const accessToken = this.jwt.sign({ role: roleJwt, sub: staff.id });
+    return {
+      accessToken,
+      expiresIn: "8h",
+      role: roleJwt,
+      dbRole: staff.role,
+      email: String(staff.email).trim(),
+    };
   }
 
   /** @deprecated alias */

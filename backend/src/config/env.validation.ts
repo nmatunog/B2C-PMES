@@ -32,6 +32,12 @@ export const envValidationSchema = Joi.object({
   FIREBASE_PROJECT_ID: Joi.string().allow(""),
   FIREBASE_CLIENT_EMAIL: Joi.string().allow(""),
   FIREBASE_PRIVATE_KEY: Joi.string().allow(""),
+
+  /** B2CCoop Accounting integration (optional until accounting API is deployed). */
+  ACCOUNTING_API_URL: Joi.string().uri().allow(""),
+  ACCOUNTING_INTEGRATION_SECRET: Joi.string().allow(""),
+  /** Default ₱1,500 — share + membership fee posted when Treasurer confirms payment. */
+  INITIAL_MEMBERSHIP_FEE_AMOUNT: Joi.number().positive().default(1500),
 })
   .custom((value, helpers) => {
     const v = value as {
