@@ -1,4 +1,4 @@
-# B2C PMES — Cursor / deployment context
+# B2CCoop WebApp — Cursor / deployment context
 
 Use **`@cursor_docs.md`** in Cursor chat for stack-wide context.
 
@@ -11,7 +11,7 @@ Use **`@cursor_docs.md`** in Cursor chat for stack-wide context.
 | **Firebase** | Member **Authentication** (email/password). Optional Firestore for PMES **resume progress** (`pmes_progress`). |
 | **Neon** | **PostgreSQL** for all cooperative data: participants, PMES records, LOI, membership lifecycle, staff users, full profiles. |
 | **NestJS API** (`backend/`) | REST API + Prisma ORM (existing). **Never** expose `DATABASE_URL` to the browser. |
-| **Next.js (`frontend/app/`)** | OpenNext on Cloudflare Worker: Route Handlers + `@neondatabase/serverless` — same Postgres schema as Prisma. Deploy: **`frontend/wrangler.b2c-pmes-web.jsonc`**. |
+| **Next.js (`frontend/app/`)** | OpenNext on Cloudflare Worker: Route Handlers + `@neondatabase/serverless` — same Postgres schema as Prisma. Deploy: **`frontend/wrangler.b2ccoop-webapp.jsonc`**. |
 | **Vite + React** (`frontend/`) | UI. Talks to Firebase Auth + `VITE_API_BASE_URL` → Nest and/or Next (same `/auth/...` paths when using rewrites). |
 
 Member UI remains **Vite**; env uses **`VITE_*`**, not `NEXT_PUBLIC_*`. The Next app at the repo root is primarily for **Edge API routes** during migration.

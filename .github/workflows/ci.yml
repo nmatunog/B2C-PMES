@@ -20,6 +20,8 @@ jobs:
         working-directory: frontend
       - run: npm run preflight:api
         working-directory: frontend
+        env:
+          PREFLIGHT_ENV_FILE: ${{ github.workspace }}/frontend/.env.production.ci
       - run: npm run lint
         working-directory: frontend
       - run: npm run build
@@ -32,16 +34,16 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: b2c_pmes
+          POSTGRES_DB: b2ccoop_webapp
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d b2c_pmes"
+          --health-cmd "pg_isready -U postgres -d b2ccoop_webapp"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/b2c_pmes
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/b2ccoop_webapp
       ADMIN_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters-x
     steps:
       - uses: actions/checkout@v4

@@ -1,10 +1,11 @@
-# B2C PMES documentation index
+# B2CCoop WebApp documentation index
 
 | Document | Purpose |
 |----------|---------|
 | [../README.md](../README.md) | Repository overview and quick links |
 | [../DEVELOPMENT.md](../DEVELOPMENT.md) | Local setup, env vars, Firestore paths, Git workflow, troubleshooting |
 | [OPERATIONS.md](./OPERATIONS.md) | **Production:** Cloudflare split (Pages + Worker), deploy commands, CORS, domains, Firebase |
+| [RENAME-CUTOVER.md](./RENAME-CUTOVER.md) | Rename from B2C-PMES → B2CCoop WebApp (Cloudflare, Firestore, local DB) |
 | [../frontend/CLOUDFLARE.md](../frontend/CLOUDFLARE.md) | OpenNext on Cloudflare Workers (Wrangler, build, dashboard checklist) |
 | [deploy-neon.md](./deploy-neon.md) | Neon Postgres for Nest/Prisma production |
 | [../.cursor/rules/](../.cursor/rules/) | AI-assisted development conventions (Nest AI, commits, stack) |

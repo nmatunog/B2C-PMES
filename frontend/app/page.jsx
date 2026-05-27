@@ -114,7 +114,7 @@ export default function Home() {
 
   return (
     <main style={{ padding: "2rem", maxWidth: "40rem", fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ fontSize: "1.25rem", fontWeight: 800 }}>B2C PMES — Next.js (Edge API)</h1>
+      <h1 style={{ fontSize: "1.25rem", fontWeight: 800 }}>B2CCoop WebApp — Next.js (Edge API)</h1>
       <p style={{ marginTop: "1rem", lineHeight: 1.5 }}>
         Member UI for production lives in <code>frontend/</code>. This page demonstrates Firebase sign-up +{" "}
         <code>POST /auth/sync-member</code> (rewrites to <code>/api/auth/sync-member</code>; Neon{" "}

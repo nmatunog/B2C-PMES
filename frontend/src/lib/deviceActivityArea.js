@@ -3,7 +3,7 @@
  * No API keys; user may deny location — returns null in that case.
  */
 
-const NOMINATIM_UA = "B2C-PMES/1.0 (member web app; +https://github.com/)";
+const NOMINATIM_UA = "B2CCoop-WebApp/1.0 (member web app; +https://github.com/)";
 
 /**
  * @param {number} lat

@@ -4,7 +4,7 @@
 #
 # Usage:
 #   bash scripts/github/bootstrap-dev-remotes.sh
-#   DEV_REMOTE_URL=https://github.com/ORG/B2C-PMES-dev.git bash scripts/github/bootstrap-dev-remotes.sh
+#   DEV_REMOTE_URL=https://github.com/ORG/B2CCoop-WebApp-dev.git bash scripts/github/bootstrap-dev-remotes.sh
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bash "$HERE/push-initial-to-dev.sh" "$@"

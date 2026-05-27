@@ -1,4 +1,4 @@
-# B2C PMES
+# B2CCoop WebApp
 
 Pre-membership education seminar (PMES) application: modular **React (Vite)** frontend with **Firebase** (Auth + Firestore), and a **NestJS + Prisma + PostgreSQL** backend scaffold for production APIs.
 

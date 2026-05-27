@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "B2C PMES API",
+  title: "B2CCoop WebApp API",
   description: "Edge API routes (Neon + Firebase)",
 };
 

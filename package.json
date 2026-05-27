@@ -1,5 +1,5 @@
 {
-  "name": "b2c-pmes",
+  "name": "b2ccoop-webapp",
   "private": true,
   "description": "Monorepo helper scripts (backend/ and frontend/ have their own package.json).",
   "scripts": {

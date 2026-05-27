@@ -7,7 +7,13 @@ export async function GET() {
     await sql`SELECT 1 AS ok`;
     return NextResponse.json({ status: "ok", database: "connected" });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Database check failed";
-    return NextResponse.json({ status: "error", database: "disconnected", message: msg }, { status: 503 });
+    const raw = e instanceof Error ? e.message : "Database check failed";
+    const leaksConfig =
+      /DATABASE_URL|postgresql:\/\//i.test(raw) || /connection string/i.test(raw);
+    const message = leaksConfig ? "Database unavailable" : raw;
+    return NextResponse.json(
+      { status: "error", database: "disconnected", message },
+      { status: 503 },
+    );
   }
 }

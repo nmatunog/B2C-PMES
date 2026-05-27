@@ -6,15 +6,15 @@ This app uses [**OpenNext for Cloudflare**](https://opennext.js.org/cloudflare) 
 
 ## Deployment roadmap (gold standard checklist)
 
-Use this when setting up or revisiting production. Settings below match **`frontend/wrangler.jsonc`** and **`package.json`**.
+Use this when setting up or revisiting production. Production settings match **`frontend/wrangler.b2ccoop-webapp.jsonc`** and **`package.json`** (`cf:deploy:web:safe`). Local/dev OpenNext uses **`frontend/wrangler.jsonc`** (`b2ccoop-webapp-dev`).
 
 ### Phase 1 — Clean up (avoid domain / name conflicts)
 
 Before attaching a production hostname, remove obsolete projects that might still hold the domain or duplicate names:
 
-1. **Workers:** Delete old test Workers you no longer need (e.g. earlier names like `b2ccoop`, `b2c-pmes`) **only if** you are sure nothing production-critical uses them.
+1. **Workers:** Delete obsolete Workers (e.g. **`b2c-pmes-web`**) **only after** traffic uses **`b2ccoop-webapp`** and custom domains are moved.
 2. **Pages:** Remove unused **Pages** projects that might still serve the same hostname.
-3. **Custom domains:** In each old project, remove **Custom domain** bindings so **`b2ccoop.com`** / **`www.b2ccoop.com`** are free to attach to **`b2c-pmes-web`**.
+3. **Custom domains:** Detach **`b2ccoop.com`** / **`www.b2ccoop.com`** from old Pages **`b2c-pmes-web-ui`** before attaching them to **`b2ccoop-webapp-ui`** (Vite UI). API hostnames attach to Worker **`b2ccoop-webapp`**, not Pages.
 
 Deleting a Worker does **not** delete your Git repo; it only frees routing and names. When in doubt, detach domains first, then delete.
 
@@ -22,16 +22,16 @@ Deleting a Worker does **not** delete your Git repo; it only frees routing and n
 
 1. Cloudflare dashboard → **Workers & Pages** → **Create application**.
 2. Stay on the **Workers** tab (do **not** create a static-only Pages project for this Next app).
-3. **Connect to Git** and select the repo/branch you deploy from (e.g. `main` on **`B2C-PMES`** or your dev mirror).
+3. **Connect to Git** and select the repo/branch you deploy from (e.g. `main` on **`B2CCoop-WebApp`** or your dev mirror).
 
 ### Phase 3 — Build settings (must match this repo)
 
 | Setting | Value |
 |--------|--------|
-| **Worker name** | **`b2c-pmes-web`** — must match `"name"` in `frontend/wrangler.jsonc` and `services[0].service`. |
+| **Worker name** | **`b2ccoop-webapp`** — must match `"name"` in `frontend/wrangler.b2ccoop-webapp.jsonc` and `services[0].service`. |
 | **Root directory** | **`frontend`** |
 | **Build command** | **`npm ci && npm run cf:build`** |
-| **Deploy command** | If the UI asks for a separate step: **`npx wrangler deploy`**. (Some pipelines combine build + deploy; follow what Cloudflare shows.) |
+| **Deploy command** | **`npx wrangler deploy --config wrangler.b2ccoop-webapp.jsonc --keep-vars`** (or `npm run cf:deploy:web:safe` from `frontend/`). |
 
 **Build environment variables (non-secret):**
 
@@ -43,19 +43,14 @@ Deleting a Worker does **not** delete your Git repo; it only frees routing and n
 
 ### Phase 4 — Compatibility flags
 
-Your repo already declares runtime settings in **`frontend/wrangler.jsonc`**:
-
-- `compatibility_flags` includes **`nodejs_compat`**
-- `compatibility_date` is **`2024-12-30`**
-
-Git-based deploys using Wrangler should pick these up from the file. In the dashboard, open the Worker → **Settings** → look for **Compatibility date** / **Compatibility flags** (labels vary by UI version). Keep them **aligned** with `wrangler.jsonc` so dashboard and Git deploys do not fight each other.
+Production runtime settings are in **`frontend/wrangler.b2ccoop-webapp.jsonc`** (`nodejs_compat`, `compatibility_date`). Keep the dashboard **aligned** with that file (or with `wrangler.jsonc` for the dev Worker **`b2ccoop-webapp-dev`**).
 
 Do **not** rely on a tab name **“Functions”** for Workers — that naming is often associated with **Pages**. For Workers, use **Compatibility** / runtime settings on the Worker itself.
 
 ### Phase 5 — Custom domain (apex and/or www)
 
 1. Ensure the domain’s DNS is on **Cloudflare** (same account as the Worker) or follow Cloudflare’s DNS steps for the hostname.
-2. **Workers & Pages** → Worker **`b2c-pmes-web`** → **Triggers** / **Custom domains** → **Add**.
+2. **Workers & Pages** → Worker **`b2ccoop-webapp`** → **Triggers** / **Custom domains** → **Add**.
 3. Add each hostname you need:
    - **Apex:** `b2ccoop.com`
    - **WWW:** `www.b2ccoop.com`  
@@ -67,9 +62,12 @@ HTTPS certificates are issued after DNS validates.
 
 ## Names must match
 
-`wrangler.jsonc` sets the Worker name to **`b2c-pmes-web`**. The name in the Cloudflare dashboard **must match** `name` in `wrangler.jsonc`, or Git/automated builds can fail ([Workers name requirement](https://developers.cloudflare.com/workers/ci-cd/builds/troubleshoot/#workers-name-requirement)).
+| Config | Worker name | Use |
+|--------|-------------|-----|
+| `wrangler.b2ccoop-webapp.jsonc` | **`b2ccoop-webapp`** | Production API (`npm run cf:deploy:web:safe`) |
+| `wrangler.jsonc` | **`b2ccoop-webapp-dev`** | Local preview / dev deploy (`npm run cf:deploy:dev`) |
 
-To rename, edit **`name`** and **`services[0].service`** consistently (and only change `main` / `assets` if you know the implications).
+The Cloudflare dashboard name **must match** `"name"` in the config you deploy, or Git/automated builds can fail ([Workers name requirement](https://developers.cloudflare.com/workers/ci-cd/builds/troubleshoot/#workers-name-requirement)).
 
 ---
 
@@ -85,8 +83,11 @@ npm run cf:build
 |--------|--------|
 | `npm run build` | Next.js only (e.g. CI smoke). |
 | `npm run cf:build` | Next.js + OpenNext → **`frontend/.open-next/`** |
-| `npm run cf:preview` | Build and run locally in the Workers runtime. |
-| `npm run cf:deploy` | Build + deploy via Wrangler (requires `wrangler login`). |
+| `npm run cf:preview` | Build + preview **dev** Worker (`wrangler.jsonc`). |
+| `npm run cf:deploy:web:safe` | Preflight + build + deploy **production** Worker (`wrangler.b2ccoop-webapp.jsonc`). |
+| `npm run cf:deploy:dev` | Deploy OpenNext to **dev** Worker only. |
+| `npm run pages:deploy:safe` | Vite UI → Pages **`b2ccoop-webapp-ui`**. |
+| `npm run pages:deploy:live-domains` | Same build → **`b2c-pmes-web-ui`** (custom domains) + **`b2ccoop-webapp-ui`**. |
 
 ---
 
@@ -98,7 +99,12 @@ Configure in the Worker → **Settings** → **Variables** and **Secrets**.
 
 - **`ADMIN_JWT_SECRET`** — **Required** (min 32 characters). Signs and verifies **staff** JWTs for `POST /api/auth/admin/login` and every staff-protected route (`/api/pmes/admin/*`, etc.). Must be the **same** value in **Production** and **Preview** if you expect admin login on both; if you use the Nest backend for staff login in another environment, use the **same** secret there too so tokens verify. Rotating this secret **invalidates existing staff sessions** until admins sign in again. It does **not** affect member Firebase auth or ordinary PMES/LOI flows.
 - `DATABASE_URL` — Neon connection string  
-- `GEMINI_API_KEY` — landing FAQ AI  
+- `GEMINI_API_KEY` — landing FAQ AI and TTS (when providers are `gemini`)  
+
+**Non-secret (declared in `wrangler.b2ccoop-webapp.jsonc` `vars`):**
+
+- `LANDING_CHAT_PROVIDER` — `gemini` \| `noop` (landing Ka-uban text)  
+- `AI_PROVIDER` — `gemini` \| `openai` \| `grok` \| `noop` (TTS)  
 - Optional: `MEMBER_SYNC_SECRET`; `FIREBASE_PRIVATE_KEY` / `FIREBASE_CLIENT_EMAIL` if you use Nest-style Admin verification  
 
 **Typical non-secret / public:**
@@ -109,7 +115,7 @@ Configure in the Worker → **Settings** → **Variables** and **Secrets**.
 
 Mirror what you use in `frontend/.env` / `.env.local`. **Never commit secrets.**
 
-**Wrangler vs dashboard:** `wrangler deploy --config wrangler.b2c-pmes-web.jsonc` **replaces** Worker metadata from the config file. Without `--keep-vars`, variables you set only in the Cloudflare UI can disappear on the next deploy. This repo uses **`--keep-vars`** on `cf:deploy:web*` and declares **`FIREBASE_PROJECT_ID`** under `vars` in `wrangler.b2c-pmes-web.jsonc` so `firebase-session` and sync-member keep working after each deploy. Change that id in the file if your Firebase project differs.
+**Wrangler vs dashboard:** `wrangler deploy --config wrangler.b2ccoop-webapp.jsonc` **replaces** Worker metadata from the config file. Without `--keep-vars`, variables you set only in the Cloudflare UI can disappear on the next deploy. This repo uses **`--keep-vars`** on `cf:deploy:web*` and declares **`FIREBASE_PROJECT_ID`** under `vars` in `wrangler.b2ccoop-webapp.jsonc` so `firebase-session` and sync-member keep working after each deploy. Change that id in the file if your Firebase project differs.
 
 Local Wrangler preview can use **`frontend/.dev.vars.example`** as a template for **`.dev.vars`** (gitignored).
 
@@ -124,7 +130,7 @@ Local Wrangler preview can use **`frontend/.dev.vars.example`** as a template fo
 
 ## Vite app (separate stack)
 
-The marketing UI under **`frontend/src`** is built with **`npm run vite:build`** → **`dist/`**. Deploy with **`npm run pages:deploy:safe`** (Cloudflare **Pages** project **`b2c-pmes-web-ui`**). Pages-only Wrangler config lives in **`frontend/cloudflare-pages-ui/wrangler.jsonc`** (`pages_build_output_dir` → **`../dist`**) so Wrangler does not mix Pages settings with the OpenNext **`frontend/wrangler.jsonc`** Worker config (which would error or warn). This document covers only the **Next.js** OpenNext Worker. For the full production picture (apex domain, API URL, CORS), see **[../docs/OPERATIONS.md](../docs/OPERATIONS.md)**.
+The marketing UI under **`frontend/src`** is built with **`npm run vite:build`** → **`dist/`**. Deploy with **`npm run pages:deploy:safe`** (Cloudflare **Pages** project **`b2ccoop-webapp-ui`**). Pages-only Wrangler config lives in **`frontend/cloudflare-pages-ui/wrangler.jsonc`** (`pages_build_output_dir` → **`../dist`**) so Wrangler does not mix Pages settings with the OpenNext **`frontend/wrangler.jsonc`** Worker config (which would error or warn). This document covers only the **Next.js** OpenNext Worker. For the full production picture (apex domain, API URL, CORS), see **[../docs/OPERATIONS.md](../docs/OPERATIONS.md)**.
 
 ---
 

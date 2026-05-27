@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # One-time: after creating an EMPTY dev repo on GitHub, push this repo's branches/tags to it.
-# Create the repo in the GitHub UI: New repository → name e.g. B2C-PMES-dev → no README/license.
+# Create the repo in the GitHub UI: New repository → name e.g. B2CCoop-WebApp-dev → no README/license.
 #
 # Usage:
 #   bash scripts/github/push-initial-to-dev.sh
-#   DEV_REMOTE_URL=https://github.com/ORG/B2C-PMES-dev.git bash scripts/github/push-initial-to-dev.sh
+#   DEV_REMOTE_URL=https://github.com/ORG/B2CCoop-WebApp-dev.git bash scripts/github/push-initial-to-dev.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -27,7 +27,7 @@ if ! git ls-remote "$DEV_URL" &>/dev/null; then
   echo "" >&2
   echo "Do this first:" >&2
   echo "  1. Open https://github.com/new (logged into the same account that owns your production repo)." >&2
-  echo "  2. Repository name: e.g. B2C-PMES-dev — leave it EMPTY (no README, no .gitignore, no license)." >&2
+  echo "  2. Repository name: e.g. B2CCoop-WebApp-dev — leave it EMPTY (no README, no .gitignore, no license)." >&2
   echo "  3. Create repository, then run this script again." >&2
   echo "" >&2
   echo "If the repo lives under another owner or name, set the URL explicitly, e.g.:" >&2

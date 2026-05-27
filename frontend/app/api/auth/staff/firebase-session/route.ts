@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message:
-          "FIREBASE_PROJECT_ID is not set on the API Worker. In Cloudflare → b2c-pmes-web → Settings → Variables, add it (same value as VITE_FIREBASE_PROJECT_ID on Pages). No redeploy needed after saving.",
+          "FIREBASE_PROJECT_ID is not set on the API Worker. In Cloudflare → b2ccoop-webapp → Settings → Variables, add it (same value as VITE_FIREBASE_PROJECT_ID on Pages). No redeploy needed after saving.",
         statusCode: 503,
       },
       { status: 503, headers: EDGE_CORS_HEADERS },

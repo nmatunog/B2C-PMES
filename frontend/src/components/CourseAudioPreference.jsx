@@ -1,7 +1,7 @@
 import { MessageCircle, Volume2 } from "lucide-react";
 import { KaubanAvatarHead } from "./KaubanAvatarHead";
 
-const STORAGE_KEY = "b2c-pmes-course-audio";
+const STORAGE_KEY = "b2ccoop-webapp-course-audio";
 
 export function readCourseAudioPreference() {
   try {

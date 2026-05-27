@@ -1,5 +1,5 @@
 /**
- * Single privacy / data protection notice for the whole B2C PMES app and marketing site.
+ * Single privacy / data protection notice for the whole B2CCoop WebApp app and marketing site.
  * Grounded in the Data Privacy Act of 2012 (RA 10173). Shown on the landing “Data privacy”
  * modal and on the PMES consent screen (plus an extra consent line before “I Agree”).
  */

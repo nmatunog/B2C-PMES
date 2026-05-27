@@ -1,4 +1,4 @@
-# B2C PMES — Production operations
+# B2CCoop WebApp — Production operations
 
 This document describes how the **live** stack is wired: two Cloudflare surfaces (static marketing UI + API Worker), how to deploy safely, and common pitfalls (CORS, wrong hostname, wrong Worker).
 
@@ -15,7 +15,7 @@ For local development, use **[DEVELOPMENT.md](../DEVELOPMENT.md)**. For OpenNext
 
 **Important:** The **custom domain for the public marketing site** (e.g. apex `b2ccoop.com`) should attach to the **Pages** project that serves the **Vite** build, not only to the OpenNext Worker. If the apex points only at the Worker, visitors may see the Next shell instead of the Vite landing experience you expect.
 
-**API base URL:** The browser uses **`VITE_API_BASE_URL`** (built into the Vite app) pointing at the **Worker origin** (e.g. `https://b2c-pmes-web.<account>.workers.dev` or a dedicated API hostname). Paths are rewritten in Next so the client can call routes like `/auth/sync-member` and `/pmes/...` consistently—see `frontend/next.config.mjs` and middleware.
+**API base URL:** The browser uses **`VITE_API_BASE_URL`** (built into the Vite app) pointing at the **Worker origin** (e.g. `https://b2ccoop-webapp.<account>.workers.dev` or a dedicated API hostname). Paths are rewritten in Next so the client can call routes like `/auth/sync-member` and `/pmes/...` consistently—see `frontend/next.config.mjs` and middleware.
 
 ---
 
@@ -23,10 +23,17 @@ For local development, use **[DEVELOPMENT.md](../DEVELOPMENT.md)**. For OpenNext
 
 | Asset | Cloudflare name / command | Notes |
 |-------|---------------------------|--------|
-| Vite UI (Pages) | **`b2c-pmes-web-ui`** | `wrangler pages deploy dist --project-name b2c-pmes-web-ui` |
-| OpenNext API Worker | **`b2c-pmes-web`** | `wrangler deploy --config wrangler.b2c-pmes-web.jsonc` |
+| Vite UI (Pages) | **`b2ccoop-webapp-ui`** | `wrangler pages deploy dist --project-name b2ccoop-webapp-ui` |
+| OpenNext API Worker | **`b2ccoop-webapp`** | `wrangler deploy --config wrangler.b2ccoop-webapp.jsonc` |
 
-There is also a default **`frontend/wrangler.jsonc`** used by generic `cf:deploy*` scripts; **for production API** use **`cf:deploy:web:safe`** so the deployed Worker is **`b2c-pmes-web`**, not an accidental dev worker name.
+| Command | Deploys to |
+|---------|------------|
+| `npm run cf:deploy:web:safe` | Production API Worker **`b2ccoop-webapp`** (`wrangler.b2ccoop-webapp.jsonc`) |
+| `npm run cf:deploy:dev` | Dev Worker **`b2ccoop-webapp-dev`** (`wrangler.jsonc`) |
+| `npm run pages:deploy:safe` | Vite UI → **`b2ccoop-webapp-ui`** |
+| `npm run pages:deploy:live-domains` | Same UI → **`b2c-pmes-web-ui`** (custom domains) + **`b2ccoop-webapp-ui`** |
+
+`npm run cf:deploy:safe` is an alias for **`cf:deploy:web:safe`** (production).
 
 ---
 
@@ -37,11 +44,11 @@ From **`frontend/`** (after `npm ci` and Wrangler auth as needed):
 | Goal | Command |
 |------|---------|
 | Deploy **Vite UI** to Pages | `npm run pages:deploy:safe` |
-| Deploy **production API Worker** (`b2c-pmes-web`) | `npm run cf:deploy:web:safe` |
+| Deploy **production API Worker** (`b2ccoop-webapp`) | `npm run cf:deploy:web:safe` |
 
 Both run **`preflight:api`** first (`scripts/preflight-prod-api.sh`) to reduce “wrong env” deploys.
 
-**Do not** rely on `cf:deploy:safe` alone for production API if it targets a different Worker config than `wrangler.b2c-pmes-web.jsonc`.
+**Do not** rely on `cf:deploy:safe` alone for production API if it targets a different Worker config than `wrangler.b2ccoop-webapp.jsonc`.
 
 ---
 
@@ -81,8 +88,8 @@ Marketing HTML metadata lives in **`frontend/index.html`** (title, description, 
 
 This team often uses:
 
-- **`origin`** — development mirror (e.g. `B2C-PMES-dev`)
-- **`production`** — production repo (e.g. `B2C-PMES`)
+- **`origin`** — development mirror (e.g. `B2CCoop-WebApp-dev`)
+- **`production`** — production repo (e.g. `B2CCoop-WebApp`)
 
 Push documentation and code to the branch your team uses (commonly **`main`** on both).
 

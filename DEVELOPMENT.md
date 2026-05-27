@@ -1,4 +1,4 @@
-# B2C PMES — Development handbook
+# B2CCoop WebApp — Development handbook
 
 Use this document to **reload the project on a new machine**, onboard another developer, or resume work after a long break.
 
@@ -30,8 +30,8 @@ Use this document to **reload the project on a new machine**, onboard another de
 From any machine:
 
 ```bash
-git clone <your-github-repo-url> b2c-pmes
-cd b2c-pmes
+git clone <your-github-repo-url> b2ccoop-webapp
+cd b2ccoop-webapp
 ```
 
 ### Frontend
@@ -87,7 +87,7 @@ npm run dev
 
 Wait until the container is healthy (`docker compose ps` or `docker-compose ps`), then migrate.
 
-**Option B — Postgres.app, Homebrew, or a cloud DB:** create database `b2c_pmes`, set `DATABASE_URL` in `backend/.env`, then `npx prisma migrate deploy`.
+**Option B — Postgres.app, Homebrew, or a cloud DB:** create database `b2ccoop_webapp`, set `DATABASE_URL` in `backend/.env`, then `npx prisma migrate deploy`.
 
 **First-time schema:** run `npx prisma migrate deploy` (or `npm run prisma:migrate` for dev) so tables exist before using PMES APIs.
 
@@ -115,7 +115,7 @@ cd ../backend && npm run build
 ## 4. Repository layout (high level)
 
 ```
-B2C-PMES/
+B2CCoop-WebApp/
 ├── frontend/           # Vite React app
 │   ├── src/
 │   │   ├── App.jsx
@@ -148,7 +148,7 @@ B2C-PMES/
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_APP_ID` | Firestore path segment: `artifacts/{appId}/public/data/...`. Use a stable value per environment (e.g. `b2c-pmes`). |
+| `VITE_APP_ID` | Firestore path segment: `artifacts/{appId}/public/data/...`. Use a stable value per environment (e.g. `b2ccoop-webapp`). |
 | `VITE_FIREBASE_*` | From Firebase Console → Project settings → Your apps → Web app config. |
 | `VITE_API_BASE_URL` | Nest API (e.g. `http://localhost:3000`). Enables **TTS** (`/ai/tts`) and **PMES data** (`/pmes/*`) instead of Firestore for saves/list/certificate lookup. Omit to stay Firebase-only for data. |
 
@@ -199,7 +199,7 @@ From the repository root:
 git init
 git add .
 git status   # confirm node_modules and .env are NOT listed
-git commit -m "Initial commit: B2C PMES frontend + backend scaffold"
+git commit -m "Initial commit: B2CCoop WebApp frontend + backend scaffold"
 ```
 
 Create an empty repository on GitHub (private recommended), then:

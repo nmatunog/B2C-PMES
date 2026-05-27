@@ -8,7 +8,7 @@ function apiBase() {
   return typeof raw === "string" ? raw.replace(/\/$/, "") : "";
 }
 
-const REFERRAL_SESSION_KEY = "b2c_pmes_referral_code";
+const REFERRAL_SESSION_KEY = "b2ccoop_webapp_referral_code";
 
 function readStoredReferralCode() {
   try {

@@ -2,13 +2,13 @@
 # One-time per clone: origin → dev (daily work + auto-push), production → canonical prod repo.
 #
 # Typical order:
-#   - Create empty repo B2C-PMES-dev on GitHub (no README).
+#   - Create empty repo B2CCoop-WebApp-dev on GitHub (no README).
 #   - bash scripts/github/bootstrap-dev-remotes.sh
 #     (or push-initial-to-dev.sh then switch-origin-to-dev.sh)
 #
 # Usage:
 #   bash scripts/github/switch-origin-to-dev.sh
-#   DEV_REMOTE_URL=https://github.com/ORG/B2C-PMES-dev.git bash scripts/github/switch-origin-to-dev.sh
+#   DEV_REMOTE_URL=https://github.com/ORG/B2CCoop-WebApp-dev.git bash scripts/github/switch-origin-to-dev.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"

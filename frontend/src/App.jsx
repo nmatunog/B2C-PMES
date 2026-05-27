@@ -167,10 +167,10 @@ function escapeHtmlForPrint(text) {
 }
 
 /** Staff JWT + role for this browser tab only (survives refresh until tab close or Logout). */
-const STAFF_SS_TOKEN = "b2c_pmes_staff_jwt";
-const STAFF_SS_ROLE = "b2c_pmes_staff_role";
-const STAFF_SS_EMAIL = "b2c_pmes_staff_email";
-const STAFF_SS_DB_ROLE = "b2c_pmes_staff_db_role";
+const STAFF_SS_TOKEN = "b2ccoop_webapp_staff_jwt";
+const STAFF_SS_ROLE = "b2ccoop_webapp_staff_role";
+const STAFF_SS_EMAIL = "b2ccoop_webapp_staff_email";
+const STAFF_SS_DB_ROLE = "b2ccoop_webapp_staff_db_role";
 
 function persistStaffSession(token, role, email, dbRole) {
   try {
@@ -334,8 +334,8 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const ref = params.get("ref")?.trim();
       if (ref) {
-        if (!sessionStorage.getItem("b2c_pmes_referral_code")) {
-          sessionStorage.setItem("b2c_pmes_referral_code", ref);
+        if (!sessionStorage.getItem("b2ccoop_webapp_referral_code")) {
+          sessionStorage.setItem("b2ccoop_webapp_referral_code", ref);
         }
         params.delete("ref");
         const qs = params.toString();
@@ -1934,7 +1934,7 @@ export default function App() {
             <div className="relative z-10 mb-8">
               <B2CLogo size="lg" className="max-w-[min(100%,15rem)] drop-shadow-md md:h-16" />
             </div>
-            <p className="relative z-10 text-xs font-black uppercase tracking-[0.25em] text-white/70">B2C PMES</p>
+            <p className="relative z-10 text-xs font-black uppercase tracking-[0.25em] text-white/70">B2CCoop WebApp</p>
             <h1 className="relative z-10 mt-4 max-w-md text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-[2.35rem] md:leading-[1.15]">
               Continue your membership journey
             </h1>

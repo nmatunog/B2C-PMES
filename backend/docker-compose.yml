@@ -5,21 +5,21 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: b2c-pmes-postgres
+    container_name: b2ccoop-webapp-postgres
     environment:
       POSTGRES_USER: postgres
       # Loaded from backend/.env (same file as Prisma). Default matches .env.example.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: b2c_pmes
+      POSTGRES_DB: b2ccoop_webapp
     ports:
       - "5432:5432"
     volumes:
-      - b2c_pmes_pgdata:/var/lib/postgresql/data
+      - b2ccoop_webapp_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d b2c_pmes"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d b2ccoop_webapp"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  b2c_pmes_pgdata:
+  b2ccoop_webapp_pgdata:

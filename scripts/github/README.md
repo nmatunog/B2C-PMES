@@ -1,19 +1,19 @@
 # Dev vs production GitHub remotes
 
-- **Production:** `B2C-PMES` — release target; keep stable.
-- **Dev:** `B2C-PMES-dev` (or your name) — daily work; **post-commit auto-push** should target this repo.
+- **Production:** `B2CCoop-WebApp` — release target; keep stable.
+- **Dev:** `B2CCoop-WebApp-dev` (or your name) — daily work; **post-commit auto-push** should target this repo.
 
 Defaults are in `defaults.sh`. Override any time:
 
 ```bash
-export PRODUCTION_REMOTE_URL='https://github.com/ORG/B2C-PMES.git'
-export DEV_REMOTE_URL='https://github.com/ORG/B2C-PMES-dev.git'
+export PRODUCTION_REMOTE_URL='https://github.com/ORG/B2CCoop-WebApp.git'
+export DEV_REMOTE_URL='https://github.com/ORG/B2CCoop-WebApp-dev.git'
 ```
 
 ## One-time: create the dev repo on GitHub
 
-1. Open **[github.com/new](https://github.com/new)** while logged into the **same account** that owns `B2C-PMES` (e.g. `nmatunog`).
-2. Repository name: e.g. **`B2C-PMES-dev`**.
+1. Open **[github.com/new](https://github.com/new)** while logged into the **same account** that owns `B2CCoop-WebApp` (e.g. `nmatunog`).
+2. Repository name: e.g. **`B2CCoop-WebApp-dev`**.
 3. **Do not** add README, `.gitignore`, or license (keep it empty), then **Create repository**.
 
 If you see **`Repository not found`** on push, the repo is missing, the name/owner in `DEV_REMOTE_URL` is wrong, or you are not logged into GitHub with a user that can push there. For a failed half-run, remove the bad remote and retry after creating the repo:

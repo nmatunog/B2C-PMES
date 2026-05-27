@@ -32,4 +32,4 @@ done
 
 npm run preflight:api
 npm run cf:build
-npx wrangler deploy --config wrangler.jsonc --keep-vars "${ARGS[@]}"
+npx wrangler deploy --config wrangler.b2ccoop-webapp.jsonc --keep-vars "${ARGS[@]}"
