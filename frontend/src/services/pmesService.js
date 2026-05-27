@@ -664,4 +664,52 @@ export const PmesService = {
     }
     return response.json();
   },
+
+  async getStoreCatalog() {
+    if (!useRest()) throw new Error("Store requires VITE_API_BASE_URL and the Nest API");
+    const response = await fetch(`${apiBase()}/store/catalog`);
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
+  async getMemberPatronageSummary(email, firebaseIdToken) {
+    if (!useRest()) {
+      return {
+        patronageAccruedBalance: "0.00",
+        purchaseCount: 0,
+        accruals: [],
+        note: "Patronage ledger requires VITE_API_BASE_URL",
+      };
+    }
+    const response = await fetch(
+      `${apiBase()}/members/patronage-summary?email=${encodeURIComponent(String(email ?? "").trim())}`,
+      {
+        headers: {
+          Authorization: `Bearer ${String(firebaseIdToken ?? "").trim()}`,
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
+  async checkoutStore(email, items, firebaseIdToken) {
+    if (!useRest()) throw new Error("Store checkout requires VITE_API_BASE_URL and the Nest API");
+    const response = await fetch(`${apiBase()}/store/checkout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${String(firebaseIdToken ?? "").trim()}`,
+      },
+      body: JSON.stringify({ email: String(email ?? "").trim(), items }),
+    });
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
 };

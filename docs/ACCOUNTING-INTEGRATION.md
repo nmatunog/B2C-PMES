@@ -27,7 +27,7 @@ Optional display-only fields (can change; do not use as sole key):
 |-------|---------------|-------------------------------|
 | Share + membership fee received | `Participant.initialFeesPaidAt` set (Treasurer action) | `membership.initial_fees` |
 | LOI pledged capital | `LoiSubmission.initialCapital` | informational / memo only until paid |
-| (Future) Store sale | not built yet | `commerce.sale` |
+| Marketplace / store sale | Member checkout or store webhook | `commerce.sale` |
 
 Treasurer confirmation today: staff role **`TREASURER`** (or ADMIN / SUPERUSER) via PMES admin API — see `backend/src/pmes/pmes.service.ts` (`confirm fee payment`).
 
@@ -88,6 +88,97 @@ GET /integrations/v1/members/{participantId}/summary
 ```
 
 Returns balances / last payment — read-only.
+
+### Member patronage ledger (Phase 2c)
+
+```http
+GET /members/patronage-summary?email=member@example.com
+Authorization: Bearer <Firebase ID token>
+```
+
+Proxies to accounting `GET /integrations/v1/members/{participantId}/patronage` — patronage accrued, qualifying purchases, accrual history.
+
+### Marketplace sale (Phase 2 — multi-line, idempotent)
+
+```http
+POST /api/v1/finance/marketplace-sale
+Authorization: Bearer <INTEGRATION_SERVICE_SECRET-or-staff-jwt>
+Content-Type: application/json
+
+{
+  "externalId": "order:<store-order-id>",
+  "occurredAt": "2026-05-28T10:00:00.000Z",
+  "currency": "PHP",
+  "grossAmount": 470.00,
+  "salesAmount": 70.00,
+  "vendorPayableAmount": 400.00,
+  "cogsAmount": 400.00,
+  "patronageAmount": 7.00,
+  "vendorCode": "B2C-DEMO",
+  "buyerParticipantId": "<optional Participant.id>",
+  "memo": "Rice + oil bundle",
+  "metadata": { "orderId": "…", "sku": "RICE-5KG" }
+}
+```
+
+- **`grossAmount`** = **`salesAmount`** + **`vendorPayableAmount`** (balanced three-line post).
+- Ledger: Dr **`11110`** Cash · Cr **`40310`** Sales · Cr **`21210`** AP (vendor subsidiary via `vendorId`).
+- Optional Phase 2c lines:
+  - Dr **`50110`** COGS · Cr **`11410`** Inventory when `cogsAmount > 0`
+  - Dr **`50410`** Patronage Refund Expense · Cr **`21310`** Patronage Refund Payable when `patronageAmount > 0`
+- Respond `201` created / `200` already posted (same `externalId`).
+
+Staff UI: `GET /api/v1/finance/vendors`, `GET /api/v1/finance/vendors/:code/ap-balance`.
+
+## WebApp store checkout (Phase 2b)
+
+Member portal demo store and external checkout webhooks post through the **WebApp API**, which forwards to accounting `marketplace-sale` (WebApp never reads accounting DB).
+
+### Member checkout
+
+```http
+GET /store/catalog
+POST /store/checkout
+Authorization: Bearer <Firebase ID token>
+Content-Type: application/json
+
+{
+  "email": "member@example.com",
+  "items": [{ "sku": "RICE-5KG", "quantity": 1 }, { "sku": "OIL-1L", "quantity": 1 }]
+}
+```
+
+- Creates `StoreOrder` with `externalId` `order:<uuid>` and posts to accounting when `ACCOUNTING_API_URL` + `ACCOUNTING_INTEGRATION_SECRET` are set.
+- One vendor per order (split multi-vendor carts).
+
+### External store webhook (Versa / future)
+
+```http
+POST /integrations/store/checkout
+X-Store-Webhook-Secret: <STORE_CHECKOUT_WEBHOOK_SECRET>
+Content-Type: application/json
+
+{
+  "externalId": "order:versa-12345",
+  "vendorCode": "B2C-DEMO",
+  "grossAmount": 470.00,
+  "salesAmount": 70.00,
+  "vendorPayableAmount": 400.00,
+  "cogsAmount": 400.00,
+  "patronageAmount": 7.00,
+  "buyerEmail": "member@example.com",
+  "memo": "Versa checkout",
+  "metadata": { "storeOrderId": "12345" }
+}
+```
+
+Env (WebApp backend / Worker):
+
+```bash
+ACCOUNTING_API_URL=http://localhost:3010
+ACCOUNTING_INTEGRATION_SECRET=<same as accounting INTEGRATION_SERVICE_SECRET>
+STORE_CHECKOUT_WEBHOOK_SECRET=<long random string>
+```
 
 ## Local dev ports (suggested)
 

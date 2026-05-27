@@ -38,6 +38,9 @@ export const envValidationSchema = Joi.object({
   ACCOUNTING_INTEGRATION_SECRET: Joi.string().allow(""),
   /** Default ₱1,500 — share + membership fee posted when Treasurer confirms payment. */
   INITIAL_MEMBERSHIP_FEE_AMOUNT: Joi.number().positive().default(1500),
+
+  /** External store checkout webhook → accounting (optional until store is live). */
+  STORE_CHECKOUT_WEBHOOK_SECRET: Joi.string().allow(""),
 })
   .custom((value, helpers) => {
     const v = value as {

@@ -8,6 +8,8 @@ import { envValidationSchema } from "./config/env.validation";
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { PmesModule } from "./pmes/pmes.module";
+import { StoreModule } from "./store/store.module";
+import { MembersModule } from "./members/members.module";
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { PmesModule } from "./pmes/pmes.module";
     HealthModule,
     AiModule,
     PmesModule,
+    StoreModule,
+    MembersModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

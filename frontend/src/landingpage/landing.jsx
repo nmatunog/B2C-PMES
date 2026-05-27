@@ -30,6 +30,7 @@ import {
   Download,
   GraduationCap,
   IdCard,
+  ShoppingBag,
 } from "lucide-react";
 
 /** Primary bylaws PDF: place file at `frontend/public/documents/b2c-bylaws-primary.pdf`. */
@@ -65,9 +66,13 @@ export default function LandingPage({
   onPioneerReclaim,
   /** Signed-in: navigate to full member portal (dashboard); not the profile intake form. */
   onMemberPortal,
+  /** Native B2C marketplace (not Versa) — independent of PMES score. */
+  onCoopStore,
   onMemberProfile,
   /** Staff JWT on home: show pipeline action counts (Treasurer / BOD / Secretary). */
   staffPipelineInbox = null,
+  /** When set, show link to B2CCoop Accounting UI (Treasurer / admin). */
+  staffTreasuryLink = null,
   /** After inline sign-up, user taps **Start PMES** — parent runs join path (e.g. live activity + `goJoinUnified`). */
   onAfterSignupStartPmes,
   /** Opens full-screen member auth (callsign, extended registration). */
@@ -513,6 +518,20 @@ export default function LandingPage({
                 Member portal
               </button>
             )}
+            {authUser && onCoopStore ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMemberPortalOpen(false);
+                  setIsMenuOpen(false);
+                  onCoopStore();
+                }}
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#004aad]/30 bg-[#004aad]/10 py-3.5 text-sm font-semibold text-[#004aad] transition-all hover:border-[#004aad]/50"
+              >
+                <ShoppingBag className="h-5 w-5 shrink-0" aria-hidden />
+                Coop store
+              </button>
+            ) : null}
             {authUser && onMemberProfile && (
               <button
                 type="button"
@@ -966,15 +985,27 @@ export default function LandingPage({
                     </ul>
                   </div>
                 </div>
-                {typeof staffPipelineInbox.onOpenAdmin === "function" ? (
-                  <button
-                    type="button"
-                    onClick={() => staffPipelineInbox.onOpenAdmin()}
-                    className="shrink-0 rounded-xl bg-amber-800 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-900 sm:min-h-[44px]"
-                  >
-                    Open pipeline
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                  {staffTreasuryLink?.url ? (
+                    <a
+                      href={staffTreasuryLink.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border-2 border-[#004aad]/40 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-wide text-[#004aad] shadow-sm transition hover:border-[#004aad]"
+                    >
+                      {staffTreasuryLink.label ?? "Treasury / Accounting"}
+                    </a>
+                  ) : null}
+                  {typeof staffPipelineInbox.onOpenAdmin === "function" ? (
+                    <button
+                      type="button"
+                      onClick={() => staffPipelineInbox.onOpenAdmin()}
+                      className="rounded-xl bg-amber-800 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-900 sm:min-h-[44px]"
+                    >
+                      Open pipeline
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : null}

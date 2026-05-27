@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { postInitialFeesPaid } from "@/lib/accounting-integration";
+import { postInitialFeesPaidAwait } from "@/lib/accounting-integration";
 import { getSql } from "@/lib/db";
 import { EDGE_CORS_HEADERS, edgeCorsOptions } from "@/lib/edge-cors";
 import { requireStaff, unauthorized, forbidden } from "@/lib/staff-edge-auth";
@@ -68,8 +68,9 @@ export async function PATCH(request: Request) {
       WHERE id = ${participantId}
     `;
 
+    let accountingInitialFees: { ok: boolean; created: boolean; error?: string } | null = null;
     if (initialFeesPaid && before && !before.initialFeesPaidAt) {
-      postInitialFeesPaid({
+      accountingInitialFees = await postInitialFeesPaidAwait({
         participantId: before.id,
         memberIdNo: before.memberIdNo,
         email: before.email,
@@ -82,7 +83,11 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ message: "Participant not found", statusCode: 404 }, { status: 404, headers: EDGE_CORS_HEADERS });
     }
 
-    return NextResponse.json(toLifecyclePayload(row), { headers: EDGE_CORS_HEADERS });
+    const payload = toLifecyclePayload(row);
+    return NextResponse.json(
+      accountingInitialFees ? { ...payload, accountingInitialFees } : payload,
+      { headers: EDGE_CORS_HEADERS },
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unauthorized";
     return unauthorized(message);

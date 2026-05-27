@@ -32,6 +32,7 @@ import {
   Phone,
   Printer,
   Search,
+  ShoppingBag,
   ShieldAlert,
   Trash2,
   Sparkles,
@@ -68,6 +69,8 @@ import { B2CLogo } from "./components/B2CLogo.jsx";
 import { ReferralEngine } from "./components/ReferralEngine.jsx";
 import { MemberSpotlight } from "./components/MemberSpotlight.jsx";
 import { MemberLifecyclePortal } from "./components/MemberLifecyclePortal.jsx";
+import { CoopStore } from "./components/CoopStore.jsx";
+import { MemberPatronageCard } from "./components/MemberPatronageCard.jsx";
 import { MemberSubmissionAckScreen } from "./components/MemberSubmissionAckScreen.jsx";
 import { PIONEER_POINTS_PER_JOIN } from "./lib/referralTiers.js";
 import { PUBLIC_MEMBER_COUNT } from "./constants/cooperativeBrand.js";
@@ -126,6 +129,7 @@ const MEMBER_AUTH_REQUIRED_STATES = new Set([
   "certificate",
   "loi_form",
   "payment_portal",
+  "coop_store",
 ]);
 
 /** Join name parts for certificates, API `fullName`, and Firebase displayName. */
@@ -134,6 +138,24 @@ function composeFullName(first, middle, last) {
     .map((s) => String(s ?? "").trim())
     .filter(Boolean)
     .join(" ");
+}
+
+/** Treasurer fee confirmation → Accounting `membership.initial_fees` post result. */
+function adminToastForAccountingFees(apiResponse) {
+  const a = apiResponse?.accountingInitialFees;
+  if (!a) return null;
+  if (a.ok) {
+    return {
+      type: /** @type {"success"} */ ("success"),
+      message: a.created
+        ? "Fees recorded and posted to Accounting (new journal voucher)."
+        : "Fees recorded — already in Accounting books.",
+    };
+  }
+  return {
+    type: /** @type {"error"} */ ("error"),
+    message: `Fees saved in PMES, but Accounting post failed: ${a.error ?? "check ACCOUNTING_API_URL"}`,
+  };
 }
 
 function formatMemberPositionLabel(rawRole) {
@@ -331,13 +353,14 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   /** Store `?ref=PIONEER-...` for POST /auth/sync-member; strip from URL after capture. */
-  /** Open staff admin directly: http://localhost:5173/?admin=1 */
+  /** Open staff admin: ?admin=1 — native dev store: ?coop_store=1 (after sign-in). */
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const params = new URLSearchParams(window.location.search);
       const ref = params.get("ref")?.trim();
       const wantsAdmin = params.get("admin");
+      const wantsCoopStore = params.get("coop_store");
       let changed = false;
       if (ref) {
         if (!sessionStorage.getItem("b2ccoop_webapp_referral_code")) {
@@ -350,6 +373,11 @@ export default function App() {
         params.delete("admin");
         changed = true;
         setAppState("admin_login");
+      }
+      if (wantsCoopStore === "1" || wantsCoopStore === "true") {
+        params.delete("coop_store");
+        changed = true;
+        sessionStorage.setItem("b2ccoop_open_coop_store", "1");
       }
       if (changed) {
         const qs = params.toString();
@@ -752,6 +780,8 @@ export default function App() {
               setAppState("landing");
             } else if (saved === "payment_portal") {
               setAppState("payment_portal");
+            } else if (saved === "coop_store") {
+              setAppState("coop_store");
             } else if (RESUMABLE_APP_STATES.has(saved)) {
               if (saved === "registration" && isParticipantProfileComplete(prog.formData)) {
                 setAppState("seminar");
@@ -841,7 +871,7 @@ export default function App() {
     if (hydratingRef.current) return undefined;
     if (appState === "member_auth" || appState === "admin_login" || appState === "admin_dashboard") return undefined;
 
-    const persistStates = new Set([...RESUMABLE_APP_STATES, "landing", "login_retrieval", "payment_portal"]);
+    const persistStates = new Set([...RESUMABLE_APP_STATES, "landing", "login_retrieval", "payment_portal", "coop_store"]);
     if (!persistStates.has(appState)) return undefined;
 
     const id = window.setTimeout(() => {
@@ -1113,13 +1143,28 @@ export default function App() {
   }, [authReady, user?.email, refreshMembershipLifecycle]);
 
   useEffect(() => {
-    if (appState !== "member_portal") return;
-    if (!(import.meta.env.VITE_API_BASE_URL || "").trim()) return;
-    if (!membershipLifecycle || typeof membershipLifecycle.canAccessFullMemberPortal !== "boolean") return;
-    if (!membershipLifecycle.canAccessFullMemberPortal) {
-      setAppState("member_pending");
+    if (!user?.email) return;
+    if (sessionStorage.getItem("b2ccoop_open_coop_store") !== "1") return;
+    sessionStorage.removeItem("b2ccoop_open_coop_store");
+    setAppState("coop_store");
+  }, [user?.email]);
+
+  const openCoopStore = useCallback(() => {
+    if (user?.email) {
+      setAppState("coop_store");
+      return;
     }
-  }, [appState, membershipLifecycle]);
+    sessionStorage.setItem("b2ccoop_open_coop_store", "1");
+    setMemberAuthMode("login");
+    setAppState("member_auth");
+  }, [user?.email]);
+
+  const coopStoreBackTarget = useCallback(() => {
+    if (membershipLifecycle?.canAccessFullMemberPortal) return "member_portal";
+    if (user?.email) return "member_pending";
+    if (staffAccessToken) return "admin_dashboard";
+    return "landing";
+  }, [membershipLifecycle?.canAccessFullMemberPortal, user?.email, staffAccessToken]);
 
   useEffect(() => {
     if (!adminToast) return undefined;
@@ -2645,19 +2690,10 @@ export default function App() {
           onMemberPortal={async () => {
             if (!user) return;
             const api = Boolean((import.meta.env.VITE_API_BASE_URL || "").trim());
-            if (!api) {
-              setAppState("member_portal");
-              return;
-            }
-            const row = await refreshMembershipLifecycle();
-            const access = resolveMemberPortalAccess({
-              useApi: true,
-              apiLifecycle: row,
-              pmesExamPassed,
-            });
-            if (access.canAccessFullMemberPortal) setAppState("member_portal");
-            else setAppState("member_pending");
+            if (api) await refreshMembershipLifecycle();
+            setAppState("member_portal");
           }}
+          onCoopStore={() => openCoopStore()}
           onMemberProfile={() => {
             if (!user) return;
             registrationNavRef.current = "portal";
@@ -2671,6 +2707,13 @@ export default function App() {
                 }
               : null
           }
+          staffTreasuryLink={(() => {
+            const url = (import.meta.env.VITE_ACCOUNTING_APP_URL || "").trim();
+            const can =
+              staffAccessToken &&
+              (staffRole === "treasurer" || staffRole === "admin" || staffRole === "superuser");
+            return url && can ? { url, label: "Treasury / Accounting" } : null;
+          })()}
         />
       </>
     );
@@ -3061,6 +3104,23 @@ export default function App() {
           </button>
         </div>
       </div>
+      </>
+    );
+
+  if (appState === "coop_store")
+    return (
+      <>
+        {identityRibbon}
+        {portalHomeBar}
+        <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+        <CoopStore
+          email={formData.email || user?.email || ""}
+          getFirebaseIdToken={async () => {
+            if (!auth?.currentUser) throw new Error("Sign in required");
+            return auth.currentUser.getIdToken();
+          }}
+          onBack={() => setAppState(coopStoreBackTarget())}
+        />
       </>
     );
 
@@ -3486,8 +3546,7 @@ export default function App() {
                 if (from === "exam") {
                   setAppState("exam");
                 } else if (from === "portal") {
-                  const full = Boolean(membershipLifecycle?.canAccessFullMemberPortal);
-                  setAppState(useApiMembership && !full ? "member_pending" : "member_portal");
+                  setAppState("member_portal");
                 } else {
                   setAppState("seminar");
                 }
@@ -3507,10 +3566,8 @@ export default function App() {
                   const from = registrationNavRef.current;
                   registrationNavRef.current = "menu";
                   if (from === "exam") setAppState("seminar");
-                  else if (from === "portal") {
-                    const full = Boolean(membershipLifecycle?.canAccessFullMemberPortal);
-                    setAppState(useApiMembership && !full ? "member_pending" : "member_portal");
-                  } else setAppState("landing");
+                  else if (from === "portal") setAppState("member_portal");
+                  else setAppState("landing");
                 }}
                 className="text-sm font-bold text-slate-500 hover:text-[#004aad]"
               >
@@ -3549,6 +3606,26 @@ export default function App() {
           <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
           <div className="flex w-full max-w-5xl flex-col gap-10">
             {memberPortalIdentityInline}
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => openCoopStore()}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-[#004aad]/40 bg-[#004aad]/10 px-5 py-3 text-sm font-black uppercase tracking-wide text-[#004aad] shadow-sm transition hover:border-[#004aad]/60 hover:bg-[#004aad]/15"
+              >
+                <ShoppingBag className="h-5 w-5 shrink-0" aria-hidden />
+                Coop store
+              </button>
+              {membershipLifecycle?.canAccessFullMemberPortal ? (
+                <button
+                  type="button"
+                  onClick={() => setAppState("member_portal")}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-slate-800 shadow-sm transition hover:border-[#004aad]/40"
+                >
+                  <IdCard className="h-5 w-5 shrink-0" aria-hidden />
+                  Full member portal
+                </button>
+              ) : null}
+            </div>
             <MemberLifecyclePortal
               lifecycle={membershipLifecycle}
               displayName={memberDisplayName}
@@ -3728,7 +3805,7 @@ export default function App() {
               <B2CLogo size="lg" align="center" className="mb-4" />
               <h1 className="text-4xl font-black uppercase tracking-tighter text-[#004aad] sm:text-5xl">Member portal</h1>
               <p className="mt-3 text-lg font-semibold text-slate-600">
-                Pioneer growth, your profile, and cooperative tools — without the PMES intake form unless you choose to edit.
+                Pioneer growth, your profile, and the Coop store — separate from PMES. Certificate and payments still require a passing PMES score.
               </p>
             </div>
 
@@ -3743,6 +3820,14 @@ export default function App() {
               >
                 <IdCard className="h-5 w-5 shrink-0" aria-hidden />
                 Edit profile
+              </button>
+              <button
+                type="button"
+                onClick={() => openCoopStore()}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-[#004aad]/40 bg-[#004aad]/10 px-5 py-3 text-sm font-black uppercase tracking-wide text-[#004aad] shadow-sm transition hover:border-[#004aad]/60 hover:bg-[#004aad]/15"
+              >
+                <ShoppingBag className="h-5 w-5 shrink-0" aria-hidden />
+                Coop store
               </button>
               {pmesExamPassed ? (
                 <>
@@ -3797,6 +3882,16 @@ export default function App() {
                 successfulJoinCount={pioneerReferralStatsPortal.successfulJoinCount}
                 pioneerPoints={pioneerPoints}
                 invitesThisMonth={pioneerReferralStatsPortal.invitesThisMonth}
+              />
+            ) : null}
+
+            {user && membershipLifecycle?.participantId ? (
+              <MemberPatronageCard
+                email={formData.email || user?.email || ""}
+                getFirebaseIdToken={async () => {
+                  if (!auth?.currentUser) throw new Error("Sign in required");
+                  return auth.currentUser.getIdToken();
+                }}
               />
             ) : null}
 
@@ -3995,6 +4090,16 @@ export default function App() {
           ) : null}
           <div className="border-b border-slate-200 bg-slate-50 px-6 py-5 lg:px-10">
             <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => openCoopStore()}
+                className="rounded-xl border-2 border-[#004aad]/35 bg-[#004aad]/10 px-5 py-3 text-sm font-black uppercase tracking-wide text-[#004aad] shadow-sm hover:border-[#004aad]/55 hover:bg-[#004aad]/15"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <ShoppingBag className="h-5 w-5 shrink-0" aria-hidden />
+                  Coop store (dev)
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={() => setStaffPasswordPanelOpen((o) => !o)}
@@ -5399,10 +5504,21 @@ export default function App() {
                                 className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold uppercase text-white hover:bg-amber-700"
                                 onClick={async () => {
                                   if (!staffAccessToken) return;
-                                  await PmesService.updateParticipantMembership(staffAccessToken, pid, {
-                                    initialFeesPaid: true,
-                                  });
-                                  await afterPipelineMutation();
+                                  try {
+                                    const res = await PmesService.updateParticipantMembership(
+                                      staffAccessToken,
+                                      pid,
+                                      { initialFeesPaid: true },
+                                    );
+                                    const toast = adminToastForAccountingFees(res);
+                                    if (toast) setAdminToast(toast);
+                                    await afterPipelineMutation();
+                                  } catch (e) {
+                                    setAdminToast({
+                                      type: "error",
+                                      message: e instanceof Error ? e.message : "Could not mark fees received",
+                                    });
+                                  }
                                 }}
                               >
                                 Mark fees received
@@ -5554,10 +5670,19 @@ export default function App() {
                         className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold uppercase text-white hover:bg-amber-700"
                         onClick={async () => {
                           if (!staffAccessToken) return;
-                          await PmesService.updateParticipantMembership(staffAccessToken, pid, {
-                            initialFeesPaid: true,
-                          });
-                          await afterPipelineMutation();
+                          try {
+                            const res = await PmesService.updateParticipantMembership(staffAccessToken, pid, {
+                              initialFeesPaid: true,
+                            });
+                            const toast = adminToastForAccountingFees(res);
+                            if (toast) setAdminToast(toast);
+                            await afterPipelineMutation();
+                          } catch (e) {
+                            setAdminToast({
+                              type: "error",
+                              message: e instanceof Error ? e.message : "Could not mark fees received",
+                            });
+                          }
                         }}
                       >
                         Mark fees received

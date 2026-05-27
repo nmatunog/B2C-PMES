@@ -96,8 +96,36 @@ model Participant {
   boardApprovalVotes        BoardApprovalVote[]
   pmesRecords   PmesRecord[]
   loiSubmission LoiSubmission?
+  storeOrders   StoreOrder[]
 
   @@index([referredByParticipantId])
+}
+
+/** Member / webhook store checkout — posts to accounting via `externalId` (idempotent). */
+model StoreOrder {
+  id                  String           @id @default(uuid())
+  /** Idempotency key sent to accounting, e.g. order:<uuid> */
+  externalId          String           @unique
+  participantId       String?
+  participant         Participant?     @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  vendorCode          String
+  grossAmount         Decimal          @db.Decimal(14, 2)
+  salesAmount         Decimal          @db.Decimal(14, 2)
+  vendorPayableAmount Decimal          @db.Decimal(14, 2)
+  currency            String           @default("PHP")
+  status              StoreOrderStatus @default(POSTED)
+  lineItems           Json
+  memo                String?
+  metadata            Json?
+  createdAt           DateTime         @default(now())
+
+  @@index([participantId])
+  @@index([vendorCode])
+}
+
+enum StoreOrderStatus {
+  POSTED
+  FAILED
 }
 
 /** One vote per director per membership application (approve / not). */

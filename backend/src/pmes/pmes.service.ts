@@ -596,8 +596,9 @@ export class PmesService {
       },
     });
 
+    let accountingInitialFees: { ok: boolean; created: boolean; error?: string } | null = null;
     if (dto.initialFeesPaid === true && !p.initialFeesPaidAt) {
-      this.accounting.postInitialFeesPaid({
+      accountingInitialFees = await this.accounting.postInitialFeesPaidAwait({
         participantId: p.id,
         memberIdNo: p.memberIdNo,
         email: p.email,
@@ -608,7 +609,10 @@ export class PmesService {
     const votes = await this.prisma.boardApprovalVote.count({
       where: { participantId: dto.participantId, approve: true },
     });
-    return this.toLifecyclePayload(updated, votes);
+    const life = this.toLifecyclePayload(updated, votes);
+    return accountingInitialFees
+      ? { ...life, accountingInitialFees }
+      : life;
   }
 
   /** Board-eligible staff (directors, Chairperson, Vice Chairperson, GM, Superuser) cast votes; majority sets `bodMajorityReachedAt`. */
