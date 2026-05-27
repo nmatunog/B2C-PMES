@@ -1225,7 +1225,7 @@ export function MemberFullProfileForm({
 
       <Section title="Mother's information">
         <Text label="Mother's maiden last name" value={mo.maidenLastName} onChange={(v) => setMother({ maidenLastName: v })} required />
-        <Text label="Mother's maiden first name" value={mo.maidenFirstName} onChange={(v) => setMother({ maidenFirstName: v })} required />
+        <Text label="Mother's first name" value={mo.maidenFirstName} onChange={(v) => setMother({ maidenFirstName: v })} required />
         <Text label="Mother's maiden middle name" value={mo.maidenMiddleName} onChange={(v) => setMother({ maidenMiddleName: v })} required />
         <div className="sm:col-span-2 space-y-3 rounded-xl border border-slate-200 bg-slate-50/90 p-4">
           <p className="text-xs font-black uppercase tracking-wide text-[#004aad]">Mother&apos;s current address</p>
