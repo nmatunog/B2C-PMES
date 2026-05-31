@@ -23,13 +23,18 @@ Optional display-only fields (can change; do not use as sole key):
 
 ## WebApp money events to post (MVP integration targets)
 
-| Event | WebApp signal | Suggested accounting `source` |
-|-------|---------------|-------------------------------|
-| Share + membership fee received | `Participant.initialFeesPaidAt` set (Treasurer action) | `membership.initial_fees` |
-| LOI pledged capital | `LoiSubmission.initialCapital` | informational / memo only until paid |
-| Marketplace / store sale | Member checkout or store webhook | `commerce.sale` |
+| Event | WebApp signal | Accounting `source` | Default amount |
+|-------|---------------|---------------------|----------------|
+| Initial annual membership fee | Treasurer confirms initial fees | `membership.annual_fee` | ₱500 |
+| Initial share capital | Treasurer confirms initial fees | `share_capital.contribution` | ₱1,000 |
+| Recurring annual fee | Treasurer “₱500 fee” button | `membership.annual_fee` | ₱500 / year |
+| Recurring share capital | Treasurer “₱100 share” button | `share_capital.contribution` | ₱100 / month |
+| Marketplace / store sale | Member checkout or store webhook | `commerce.sale` | sale total |
+| LOI pledged capital | `LoiSubmission.initialCapital` | — | memo only until paid |
 
-Treasurer confirmation today: staff role **`TREASURER`** (or ADMIN / SUPERUSER) via PMES admin API — see `backend/src/pmes/pmes.service.ts` (`confirm fee payment`).
+Legacy `membership.initial_fees` (single ₱1,500 to share capital) is deprecated for new posts.
+
+Treasurer actions: **`TREASURER`** (or ADMIN / SUPERUSER) — see `backend/src/pmes/pmes.service.ts` and membership pipeline UI.
 
 ## WebApp API (production)
 
@@ -67,27 +72,30 @@ Authorization: Bearer <staff-jwt-or-service-secret>
 Content-Type: application/json
 
 {
-  "source": "membership.initial_fees",
-  "externalId": "participant:<uuid>:initial_fees",
+  "source": "membership.annual_fee",
+  "externalId": "participant:<uuid>:initial:annual_fee",
   "participantId": "<Participant.id UUID>",
   "occurredAt": "2026-05-27T10:00:00.000Z",
-  "amount": 1500.00,
+  "amount": 500.00,
   "currency": "PHP",
-  "memo": "Share + membership fee",
-  "metadata": { "memberIdNo": "B2C-…", "email": "member@example.com" }
+  "memo": "Initial annual membership fee"
 }
 ```
+
+Also post `share_capital.contribution` (₱1,000, externalId `participant:<uuid>:initial:share_capital`).
 
 - **`externalId`** must be unique per logical event (replay-safe).
 - Respond `200` if already posted, `201` if created.
 
-### Member sub-ledger (for portal strip later)
+### Member sub-ledger (portal + finance UI)
 
 ```http
 GET /integrations/v1/members/{participantId}/summary
+GET /integrations/v1/members/{participantId}/passbook
+GET /members/passbook-summary?email=…   # WebApp proxy (Firebase)
 ```
 
-Returns balances / last payment — read-only.
+Passbook returns dues (₱500/year, ₱100/month), reminders, and fee/share payment rows.
 
 ### Member patronage ledger (Phase 2c)
 
