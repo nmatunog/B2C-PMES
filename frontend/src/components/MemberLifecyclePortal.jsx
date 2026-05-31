@@ -176,7 +176,11 @@ export function MemberLifecyclePortal({
             <div>
               <h2 className="text-xl font-black text-slate-900">Share capital &amp; membership fees</h2>
               <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">
-                Treasury will confirm payment before your file goes to the Board. Use the payment instructions on the next screen.
+                Initial payment: <span className="font-bold">₱500</span> annual membership fee plus{" "}
+                <span className="font-bold">₱1,000</span> initial share capital (10 months at ₱100/month). After
+                approval, members build share capital at a minimum of <span className="font-bold">₱100/month</span> and
+                pay <span className="font-bold">₱500/year</span> membership fee. Treasury will confirm payment before
+                your file goes to the Board.
               </p>
               <button type="button" onClick={onOpenPayment} className="btn-primary mt-6 w-full sm:w-auto">
                 Open payment information

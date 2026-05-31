@@ -71,6 +71,8 @@ import { MemberSpotlight } from "./components/MemberSpotlight.jsx";
 import { MemberLifecyclePortal } from "./components/MemberLifecyclePortal.jsx";
 import { CoopStore } from "./components/CoopStore.jsx";
 import { MemberPatronageCard } from "./components/MemberPatronageCard.jsx";
+import { MemberPassbookCard } from "./components/MemberPassbookCard.jsx";
+import { TreasurerMembershipPaymentActions } from "./components/TreasurerMembershipPaymentActions.jsx";
 import { MemberSubmissionAckScreen } from "./components/MemberSubmissionAckScreen.jsx";
 import { PIONEER_POINTS_PER_JOIN } from "./lib/referralTiers.js";
 import { PUBLIC_MEMBER_COUNT } from "./constants/cooperativeBrand.js";
@@ -86,6 +88,7 @@ import {
   countMembershipInboxByStage,
   staffPipelineInboxSummary,
 } from "./lib/membershipInboxCounts.js";
+import { canOpenAccounting } from "./lib/accountingAccess.js";
 
 /** Pipeline row flags — BOD votes only while majority not yet reached. */
 function flagsFromPipelineRow(row) {
@@ -2711,7 +2714,7 @@ export default function App() {
             const url = (import.meta.env.VITE_ACCOUNTING_APP_URL || "").trim();
             const can =
               staffAccessToken &&
-              (staffRole === "treasurer" || staffRole === "admin" || staffRole === "superuser");
+              canOpenAccounting(staffRole);
             return url && can ? { url, label: "Treasury / Accounting" } : null;
           })()}
         />
@@ -3886,13 +3889,22 @@ export default function App() {
             ) : null}
 
             {user && membershipLifecycle?.participantId ? (
-              <MemberPatronageCard
-                email={formData.email || user?.email || ""}
-                getFirebaseIdToken={async () => {
-                  if (!auth?.currentUser) throw new Error("Sign in required");
-                  return auth.currentUser.getIdToken();
-                }}
-              />
+              <>
+                <MemberPassbookCard
+                  email={formData.email || user?.email || ""}
+                  getFirebaseIdToken={async () => {
+                    if (!auth?.currentUser) throw new Error("Sign in required");
+                    return auth.currentUser.getIdToken();
+                  }}
+                />
+                <MemberPatronageCard
+                  email={formData.email || user?.email || ""}
+                  getFirebaseIdToken={async () => {
+                    if (!auth?.currentUser) throw new Error("Sign in required");
+                    return auth.currentUser.getIdToken();
+                  }}
+                />
+              </>
             ) : null}
 
             {user ? (
@@ -3990,9 +4002,7 @@ export default function App() {
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
               {(() => {
                 const accountingUrl = (import.meta.env.VITE_ACCOUNTING_APP_URL || "").trim();
-                const canTreasury =
-                  staffRole === "treasurer" || staffRole === "admin" || staffRole === "superuser";
-                if (!accountingUrl || !canTreasury) return null;
+                if (!accountingUrl || !canOpenAccounting(staffRole)) return null;
                 return (
                   <a
                     href={accountingUrl}
@@ -5469,7 +5479,7 @@ export default function App() {
                       const bodNeed = typeof row.bodMajorityRequired === "number" ? row.bodMajorityRequired : 3;
                       const bodVotes = typeof row.bodApproveVoteCount === "number" ? row.bodApproveVoteCount : 0;
                       const canTreasury =
-                        staffRole === "treasurer" || staffRole === "admin" || staffRole === "superuser";
+                        canOpenAccounting(staffRole);
                       const canBod = canCastBodVote(staffRole, staffDbRole);
                       const canSecretary = staffRole === "secretary" || staffRole === "superuser";
                       const { needFees, needBodVote, needSecretary } = flagsFromPipelineRow(row);
@@ -5523,6 +5533,17 @@ export default function App() {
                               >
                                 Mark fees received
                               </button>
+                            ) : null}
+                            {row.initialFeesPaid && canTreasury ? (
+                              <TreasurerMembershipPaymentActions
+                                participantId={pid}
+                                initialFeesPaid={Boolean(row.initialFeesPaid)}
+                                canTreasury={canTreasury}
+                                staffAccessToken={staffAccessToken}
+                                onComplete={afterPipelineMutation}
+                                onToast={setAdminToast}
+                                compact
+                              />
                             ) : null}
                             {needBodVote && canBod ? (
                               <>
@@ -5635,8 +5656,7 @@ export default function App() {
               const pid = String(row.participantId);
               const bodNeed = typeof row.bodMajorityRequired === "number" ? row.bodMajorityRequired : 3;
               const bodVotes = typeof row.bodApproveVoteCount === "number" ? row.bodApproveVoteCount : 0;
-              const canTreasury =
-                staffRole === "treasurer" || staffRole === "admin" || staffRole === "superuser";
+              const canTreasury = canOpenAccounting(staffRole);
               const canBod = canCastBodVote(staffRole, staffDbRole);
               const canSecretary = staffRole === "secretary" || staffRole === "superuser";
               const { needFees, needBodVote, needSecretary } = flagsFromPipelineRow(row);
@@ -5687,6 +5707,19 @@ export default function App() {
                       >
                         Mark fees received
                       </button>
+                    ) : null}
+                    {row.initialFeesPaid && canTreasury ? (
+                      <TreasurerMembershipPaymentActions
+                        participantId={pid}
+                        initialFeesPaid={Boolean(row.initialFeesPaid)}
+                        canTreasury={canTreasury}
+                        staffAccessToken={staffAccessToken}
+                        onComplete={async () => {
+                          await afterPipelineMutation();
+                          setPipelineDetailRow(null);
+                        }}
+                        onToast={setAdminToast}
+                      />
                     ) : null}
                     {needBodVote && canBod ? (
                       <>

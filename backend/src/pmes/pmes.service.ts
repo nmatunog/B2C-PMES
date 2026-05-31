@@ -18,6 +18,7 @@ import { SubmitFullProfileDto } from "./dto/submit-full-profile.dto";
 import type { ImportLegacyPioneerRowDto } from "./dto/import-legacy-pioneers.dto";
 import type { PioneerEligibilityDto } from "./dto/pioneer-eligibility.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
+import { RecordMembershipPaymentDto } from "./dto/record-membership-payment.dto";
 import type { AdminUpdateParticipantDto } from "./dto/admin-update-participant.dto";
 import type { UpdateMemberBasicProfileDto } from "./dto/update-member-basic-profile.dto";
 import {
@@ -613,6 +614,36 @@ export class PmesService {
     return accountingInitialFees
       ? { ...life, accountingInitialFees }
       : life;
+  }
+
+  async recordMembershipPayment(
+    dto: RecordMembershipPaymentDto,
+    staff: { sub: string; role: StaffJwtRole },
+  ) {
+    if (!["superuser", "admin", "treasurer"].includes(staff.role)) {
+      throw new ForbiddenException("Only Treasurer (or Admin / Superuser) can record membership payments.");
+    }
+
+    const p = await this.prisma.participant.findUnique({ where: { id: dto.participantId } });
+    if (!p) throw new NotFoundException("Participant not found");
+    if (!p.initialFeesPaidAt) {
+      throw new BadRequestException("Confirm initial fees before recording recurring payments.");
+    }
+
+    const accountingPayment = await this.accounting.postMembershipPaymentAwait({
+      participantId: p.id,
+      paymentType: dto.paymentType,
+      period: dto.period,
+      memberIdNo: p.memberIdNo,
+      email: p.email,
+      fullName: p.fullName,
+    });
+
+    if (!accountingPayment.ok) {
+      throw new BadRequestException(accountingPayment.error ?? "Accounting post failed");
+    }
+
+    return { ok: true, accountingPayment };
   }
 
   /** Board-eligible staff (directors, Chairperson, Vice Chairperson, GM, Superuser) cast votes; majority sets `bodMajorityReachedAt`. */

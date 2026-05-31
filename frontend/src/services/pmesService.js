@@ -429,6 +429,22 @@ export const PmesService = {
     return response.json();
   },
 
+  async recordMembershipPayment(accessToken, participantId, { paymentType, period }) {
+    if (!useRest()) throw new Error("API required");
+    const response = await fetch(`${apiBase()}/pmes/admin/participant/membership-payment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ participantId, paymentType, period }),
+    });
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
   async recordBodVote(accessToken, participantId, approve) {
     if (!useRest()) throw new Error("API required");
     const response = await fetch(`${apiBase()}/pmes/admin/participant/bod-vote`, {
@@ -685,6 +701,29 @@ export const PmesService = {
     }
     const response = await fetch(
       `${apiBase()}/members/patronage-summary?email=${encodeURIComponent(String(email ?? "").trim())}`,
+      {
+        headers: {
+          Authorization: `Bearer ${String(firebaseIdToken ?? "").trim()}`,
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(await parseApiErrorMessage(response));
+    }
+    return response.json();
+  },
+
+  async getMemberPassbookSummary(email, firebaseIdToken) {
+    if (!useRest()) {
+      return {
+        currency: "PHP",
+        dues: null,
+        passbook: [],
+        note: "Member passbook requires VITE_API_BASE_URL",
+      };
+    }
+    const response = await fetch(
+      `${apiBase()}/members/passbook-summary?email=${encodeURIComponent(String(email ?? "").trim())}`,
       {
         headers: {
           Authorization: `Bearer ${String(firebaseIdToken ?? "").trim()}`,

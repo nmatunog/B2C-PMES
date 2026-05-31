@@ -74,4 +74,79 @@ export class MembersController {
       };
     }
   }
+
+  /** Member portal: share capital passbook + dues reminders from accounting (Firebase session). */
+  @Get("passbook-summary")
+  async passbookSummary(
+    @Query("email") emailRaw: string,
+    @Headers("authorization") authorization: string | undefined,
+  ) {
+    const email = String(emailRaw ?? "").trim().toLowerCase();
+    if (!email) {
+      throw new BadRequestException("email query parameter is required");
+    }
+
+    const firebaseUid = await this.auth.verifyMemberEmailBearer(authorization, email);
+    const participant = await this.prisma.participant.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        firebaseUid: true,
+        memberIdNo: true,
+        fullName: true,
+        initialFeesPaidAt: true,
+      },
+    });
+    if (!participant) {
+      return {
+        participantId: null,
+        configured: this.accounting.isConfigured(),
+        currency: "PHP",
+        dues: null,
+        passbook: [],
+        note: "Member record not found — complete PMES sync first.",
+      };
+    }
+    if (firebaseUid && participant.firebaseUid && participant.firebaseUid !== firebaseUid) {
+      throw new UnauthorizedException("Firebase account does not match member record");
+    }
+
+    if (!this.accounting.isConfigured()) {
+      return {
+        participantId: participant.id,
+        configured: false,
+        currency: "PHP",
+        dues: null,
+        passbook: [],
+        note: "Share capital passbook is not connected yet (accounting API not configured).",
+      };
+    }
+
+    try {
+      const summary = await this.accounting.getMemberPassbookSummary(
+        participant.id,
+        participant.initialFeesPaidAt?.toISOString() ?? null,
+      );
+      return {
+        ...(summary as Record<string, unknown>),
+        configured: true,
+        memberIdNo: participant.memberIdNo,
+        fullName: participant.fullName,
+        initialFeesPaidAt: participant.initialFeesPaidAt?.toISOString() ?? null,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Passbook summary failed";
+      return {
+        participantId: participant.id,
+        configured: true,
+        currency: "PHP",
+        dues: null,
+        passbook: [],
+        memberIdNo: participant.memberIdNo,
+        fullName: participant.fullName,
+        initialFeesPaidAt: participant.initialFeesPaidAt?.toISOString() ?? null,
+        note: msg,
+      };
+    }
+  }
 }

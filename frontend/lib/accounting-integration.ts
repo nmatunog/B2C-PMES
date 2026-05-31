@@ -17,10 +17,83 @@ export function getInitialMembershipFeeAmount(): number {
   return Number.isFinite(n) && n > 0 ? n : 1500;
 }
 
+export function getAnnualMembershipFeeAmount(): number {
+  const raw = process.env.ANNUAL_MEMBERSHIP_FEE_AMOUNT;
+  const n = raw != null ? Number(raw) : 500;
+  return Number.isFinite(n) && n > 0 ? n : 500;
+}
+
+export function getInitialShareCapitalAmount(): number {
+  const raw = process.env.INITIAL_SHARE_CAPITAL_AMOUNT;
+  const n = raw != null ? Number(raw) : getInitialMembershipFeeAmount() - getAnnualMembershipFeeAmount();
+  return Number.isFinite(n) && n > 0 ? n : 1000;
+}
+
+export function getMonthlyShareCapitalAmount(): number {
+  const raw = process.env.MONTHLY_SHARE_CAPITAL_AMOUNT;
+  const n = raw != null ? Number(raw) : 100;
+  return Number.isFinite(n) && n > 0 ? n : 100;
+}
+
+function memberMetadata(payload: PostInitialFeesPayload) {
+  const nameParts = String(payload.fullName ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return {
+    memberIdNo: payload.memberIdNo ?? undefined,
+    email: payload.email ?? undefined,
+    firstName: nameParts[0] ?? undefined,
+    lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined,
+  };
+}
+
+async function postJournalEvent(body: Record<string, unknown>): Promise<{ ok: boolean; created: boolean; error?: string }> {
+  const base = String(process.env.ACCOUNTING_API_URL).replace(/\/$/, "");
+  const secret = String(process.env.ACCOUNTING_INTEGRATION_SECRET);
+  try {
+    const res = await fetch(`${base}/integrations/v1/journal-events`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text().catch(() => "");
+    if (!res.ok) {
+      return { ok: false, created: false, error: text.slice(0, 200) || `HTTP ${res.status}` };
+    }
+    return { ok: true, created: res.status === 201 };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, created: false, error: msg };
+  }
+}
+
 export type InitialFeesPostResult = {
   ok: boolean;
   created: boolean;
   externalId: string;
+  error?: string;
+};
+
+export type PostMembershipPaymentPayload = {
+  participantId: string;
+  paymentType: "annual_fee" | "share_capital";
+  period?: string;
+  memberIdNo?: string | null;
+  email?: string | null;
+  fullName?: string | null;
+};
+
+export type MembershipPaymentPostResult = {
+  ok: boolean;
+  created: boolean;
+  externalId: string;
+  source: string;
+  amount: number;
+  period: string;
   error?: string;
 };
 
@@ -37,52 +110,139 @@ export async function postInitialFeesPaidAwait(
     return { ok: false, created: false, externalId, error: "Accounting integration not configured" };
   }
 
-  const base = String(process.env.ACCOUNTING_API_URL).replace(/\/$/, "");
-  const secret = String(process.env.ACCOUNTING_INTEGRATION_SECRET);
-  const amount = getInitialMembershipFeeAmount();
-  const nameParts = String(payload.fullName ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  const firstName = nameParts[0] ?? undefined;
-  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
+  const annualAmount = getAnnualMembershipFeeAmount();
+  const shareAmount = getInitialShareCapitalAmount();
+  const occurredAt = new Date().toISOString();
+  const metadata = memberMetadata(payload);
 
-  const body = {
-    source: "membership.initial_fees",
+  const annual = await postJournalEvent({
+    source: "membership.annual_fee",
+    externalId: `participant:${payload.participantId}:initial:annual_fee`,
+    participantId: payload.participantId,
+    occurredAt,
+    amount: annualAmount,
+    currency: "PHP",
+    memo: "Initial annual membership fee",
+    metadata,
+  });
+
+  const share = await postJournalEvent({
+    source: "share_capital.contribution",
+    externalId: `participant:${payload.participantId}:initial:share_capital`,
+    participantId: payload.participantId,
+    occurredAt,
+    amount: shareAmount,
+    currency: "PHP",
+    memo: "Initial share capital",
+    metadata,
+  });
+
+  if (!annual.ok && !share.ok) {
+    console.warn("[accounting] post initial fees failed:", annual.error ?? share.error);
+    return { ok: false, created: false, externalId, error: annual.error ?? share.error };
+  }
+
+  return { ok: true, created: Boolean(annual.created || share.created), externalId };
+}
+
+export async function postMembershipPaymentAwait(
+  payload: PostMembershipPaymentPayload,
+): Promise<MembershipPaymentPostResult> {
+  const now = new Date();
+  const defaultAnnualPeriod = String(now.getFullYear());
+  const defaultSharePeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  if (payload.paymentType === "annual_fee") {
+    const period = payload.period?.trim() || defaultAnnualPeriod;
+    const amount = getAnnualMembershipFeeAmount();
+    const externalId = `participant:${payload.participantId}:membership_fee:${period}`;
+    if (!/^\d{4}$/.test(period)) {
+      return {
+        ok: false,
+        created: false,
+        externalId,
+        source: "membership.annual_fee",
+        amount,
+        period,
+        error: "period must be YYYY for annual_fee",
+      };
+    }
+    if (!isAccountingConfigured()) {
+      return {
+        ok: false,
+        created: false,
+        externalId,
+        source: "membership.annual_fee",
+        amount,
+        period,
+        error: "Accounting integration not configured",
+      };
+    }
+    const result = await postJournalEvent({
+      source: "membership.annual_fee",
+      externalId,
+      participantId: payload.participantId,
+      occurredAt: new Date(`${period}-01-01T12:00:00.000Z`).toISOString(),
+      amount,
+      currency: "PHP",
+      memo: `Annual membership fee ${period}`,
+      metadata: memberMetadata(payload),
+    });
+    return {
+      ok: result.ok,
+      created: result.created,
+      externalId,
+      source: "membership.annual_fee",
+      amount,
+      period,
+      error: result.error,
+    };
+  }
+
+  const period = payload.period?.trim() || defaultSharePeriod;
+  const amount = getMonthlyShareCapitalAmount();
+  const externalId = `participant:${payload.participantId}:share_capital:${period}`;
+  if (!/^\d{4}-\d{2}$/.test(period)) {
+    return {
+      ok: false,
+      created: false,
+      externalId,
+      source: "share_capital.contribution",
+      amount,
+      period,
+      error: "period must be YYYY-MM for share_capital",
+    };
+  }
+  if (!isAccountingConfigured()) {
+    return {
+      ok: false,
+      created: false,
+      externalId,
+      source: "share_capital.contribution",
+      amount,
+      period,
+      error: "Accounting integration not configured",
+    };
+  }
+  const result = await postJournalEvent({
+    source: "share_capital.contribution",
     externalId,
     participantId: payload.participantId,
-    occurredAt: new Date().toISOString(),
+    occurredAt: new Date(`${period}-01T12:00:00.000Z`).toISOString(),
     amount,
     currency: "PHP",
-    memo: "Share + membership fee",
-    metadata: {
-      memberIdNo: payload.memberIdNo ?? undefined,
-      email: payload.email ?? undefined,
-      firstName,
-      lastName,
-    },
+    memo: `Share capital ${period}`,
+    metadata: memberMetadata(payload),
+  });
+  return {
+    ok: result.ok,
+    created: result.created,
+    externalId,
+    source: "share_capital.contribution",
+    amount,
+    period,
+    error: result.error,
   };
-
-  try {
-    const res = await fetch(`${base}/integrations/v1/journal-events`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${secret}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text().catch(() => "");
-    if (!res.ok) {
-      console.warn("[accounting] post initial fees failed:", res.status, text.slice(0, 200));
-      return { ok: false, created: false, externalId, error: text.slice(0, 200) || `HTTP ${res.status}` };
-    }
-    return { ok: true, created: res.status === 201, externalId };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[accounting] post initial fees failed:", msg);
-    return { ok: false, created: false, externalId, error: msg };
-  }
 }
 
 export type PostMarketplaceSalePayload = {

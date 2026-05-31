@@ -28,6 +28,7 @@ import { SuperuserSetMemberIdDto } from "./dto/superuser-set-member-id.dto";
 import { BodVoteDto } from "./dto/bod-vote.dto";
 import { SecretaryConfirmDto } from "./dto/secretary-confirm.dto";
 import { UpdateParticipantMembershipDto } from "./dto/update-participant-membership.dto";
+import { RecordMembershipPaymentDto } from "./dto/record-membership-payment.dto";
 import { AdminUpdateParticipantDto } from "./dto/admin-update-participant.dto";
 import { AdminResetMemberPasswordDto } from "./dto/admin-reset-member-password.dto";
 import { AuthService } from "../auth/auth.service";
@@ -181,6 +182,12 @@ export class PmesController {
   @UseGuards(StaffJwtGuard)
   adminParticipantMembership(@Req() req: StaffRequest, @Body() dto: UpdateParticipantMembershipDto) {
     return this.pmes.updateParticipantMembership(dto, req.staffUser);
+  }
+
+  @Post("admin/participant/membership-payment")
+  @UseGuards(StaffJwtGuard)
+  adminRecordMembershipPayment(@Req() req: StaffRequest, @Body() dto: RecordMembershipPaymentDto) {
+    return this.pmes.recordMembershipPayment(dto, req.staffUser);
   }
 
   /** Board director (or superuser): cast / update yes-no on membership application. */
